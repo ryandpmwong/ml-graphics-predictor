@@ -236,7 +236,8 @@ def draw_ui(width: int, height: int) -> None:
         if cubeMaps[ind] != g_currentEnvMapName:
             glDeleteTextures([g_environmentCubeMap])
             g_currentEnvMapName = cubeMaps[ind]
-            g_environmentCubeMap = lu.load_cubemap("data/cube_maps/" + g_currentEnvMapName + "/%s.jpg", True)   
+            #g_environmentCubeMap = lu.load_cubemap("data/cube_maps/" + g_currentEnvMapName + "/%s.jpg", True)   
+            g_environmentCubeMap = lu.load_cubemap("data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)
         imgui.tree_pop()
 
     #_,g_yFovDeg = imgui.slider_float("Y-Fov (Degrees)", g_yFovDeg, 1.00, 90.0)
