@@ -13,6 +13,10 @@ import time
 g_sphereVertexArrayObject = None
 g_sphereShader = None
 g_numSphereVerts = 0
+
+
+g_planeVertexArrayObject = None
+g_numPlaneVerts = 0
 #endregion
 #--- Vectors ---#
 #region
@@ -541,7 +545,8 @@ class FreeCamera:
         """
         forwards = Mat3(make_rotation_y(math.radians(self.yawDeg))) \
             * Mat3(make_rotation_x(math.radians(self.pitchDeg))) \
-            * Vec3(0,0,1)
+            * vec3(0,0,1)
+        #forwards = vec3(0,0,-1)
         return make_lookFrom(self.position, forwards, up)
 
 class OrbitCamera:
@@ -945,8 +950,107 @@ def my_draw_sphere(position: Vec3, radius: float, colour: Vec3,
     glDrawArrays(GL_TRIANGLES, 0, g_numSphereVerts)
     glUseProgram(0)
 
-def my_draw_plane():
-    pass
+def create_plane(size, subdivisions):
+    plane = []
+    half_size = size / 2
+    s = size / subdivisions
+    for i in range(subdivisions):
+        for j in range(subdivisions):
+            corners = [[-half_size + i * s, 0, -half_size + j * s],
+                       [-half_size + i * s, 0, -half_size + (j+1) * s],
+                       [-half_size + (i+1) * s, 0, -half_size + (j+1) * s],
+                       [-half_size + (i+1) * s, 0, -half_size + (j+1) * s],
+                       [-half_size + (i+1) * s, 0, -half_size + j * s],
+                       [-half_size + i * s, 0, -half_size + j * s]]
+            plane.extend(corners)
+    return plane
+
+def my_draw_plane(viewToClipTransform: Mat4, worldToViewTransform: Mat4, shader):
+    global g_planeVertexArrayObject
+    global g_numPlaneVerts
+
+    modelToWorldTransform = Mat4()
+    '''modelToWorldTransform = make_translation(0, 100, 0) \
+        * make_scale(100, 100, 100)'''
+
+    if not g_planeVertexArrayObject:
+        '''planeVerts = [[-10000,0,-10000],
+                       [-10000,0,10000],
+                       [10000,0,10000],
+                       [10000,0,10000],
+                       [10000,0,-10000],
+                       [-10000,0,-10000]]'''
+        planeVerts = [[-1000,0,-1000],
+                       [-1000,0,1000],
+                       [1000,0,1000],
+                       [1000,0,1000],
+                       [1000,0,-1000],
+                       [-1000,0,-1000]]
+        planeVerts = create_plane(2000,500)
+        """planeVerts = [[-500,0,-500],
+                       [-500,0,500],
+                       [500,0,500],
+                       [500,0,500],
+                       [500,0,-500],
+                       [-500,0,-500]]"""
+        """planeVerts = [[-100,300,-100],
+                       [-100,300,100],
+                       [100,300,100],
+                       [100,300,100],
+                       [100,300,-100],
+                       [-100,300,-100]]"""
+        """planeVerts = [[-10,30,-10],
+                       [-10,30,10],
+                       [10,30,10],
+                       [10,30,10],
+                       [10,30,-10],
+                       [-10,30,-10]]
+        planeVerts = [[-100,400,0],
+                       [100,600,0],
+                       [-100,600,0]]"""
+        '''planeVerts = [[-100,0,400],
+                       [100,0,500],
+                       [-100,0,500]]'''
+        #planeVerts = create_sphere(3)
+        g_numPlaneVerts = len(planeVerts)
+        g_planeVertexArrayObject = create_vertex_array_object()
+        create_buffer_from_data(g_planeVertexArrayObject, planeVerts, 0)
+        # redundantly add as normals...
+        create_buffer_from_data(g_planeVertexArrayObject, planeVerts, 1)
+
+
+    glBindVertexArray(g_planeVertexArrayObject)
+    glUseProgram(shader)
+    #set_uniform(g_sphereShader, "sphereColour", colour)
+
+    modelToClipTransform = viewToClipTransform * worldToViewTransform * modelToWorldTransform
+    modelToViewTransform = worldToViewTransform * modelToWorldTransform
+    modelToViewNormalTransform = inverse(transpose(Mat3(modelToViewTransform)))
+    '''set_uniform(shader, "modelToClipTransform", modelToClipTransform);
+    set_uniform(shader, "modelToViewTransform", modelToViewTransform);
+    set_uniform(shader, "modelToViewNormalTransform", modelToViewNormalTransform);'''
+
+    transforms = {
+        "modelToClipTransform" : modelToClipTransform,
+        "modelToViewTransform" : modelToViewTransform,
+        "modelToViewNormalTransform" : modelToViewNormalTransform,
+    }
+    # define defaults (identity)
+    defaultTfms = {
+        "modelToClipTransform" : Mat4(),
+        "modelToViewTransform" : Mat4(),
+        "modelToViewNormalTransform" : Mat3(),
+    }
+    # overwrite defaults
+    defaultTfms.update(transforms)
+    # upload map of transforms
+    for tfmName,tfm in defaultTfms.items():
+        loc = get_uniform_location_debug(shader, tfmName)
+        tfm._set_open_gl_uniform(loc);
+
+    #glBindVertexArray(g_sphereVertexArrayObject)
+    glDrawArrays(GL_TRIANGLES, 0, g_numPlaneVerts)
+    glUseProgram(0)
 
 def flatten(array: list[any], data_type: np.dtype) -> np.ndarray:
     """

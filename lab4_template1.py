@@ -26,7 +26,10 @@ g_lightColourAndIntensity = lu.vec3(0.9, 0.9, 0.6)
 g_ambientLightColourAndIntensity = lu.vec3(0.1)
 
 #g_camera = lu.OrbitCamera([0,0,0], 10.0, -25.0, -35.0)
-g_camera = lu.OrbitCamera([0,500,0], 1000.0, 0.0, 0.0)
+#g_camera = lu.OrbitCamera([0,500,0], 1000.0, 0.0, 0.0)
+g_zTranslation = 1000
+g_yTranslation = 100
+g_camera = lu.FreeCamera([0,g_yTranslation,g_zTranslation],180,0)
 g_yFovDeg = 45.0
 
 g_currentModelName = "shaderBall1.obj"
@@ -105,6 +108,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_yFovDeg
     global g_model
     global my_counter
+    global g_zTranslation
 
     colour = np.array([1,1,0,1], np.float32)
 
@@ -215,10 +219,11 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     color_guy = [1.0, 1.0, 1.0]
 
     lu.set_uniform(g_shader, "material_diffuse_color", color_guy)
-    lu.set_uniform(g_shader, "material_specular_color", color_guy)
+    lu.set_uniform(g_shader, "material_specular_color", [0.1, 0.1, 0.1])
     lu.set_uniform(g_shader, "material_emissive_color", [0.0, 0.0, 0.0])
 
     lu.set_uniform(g_shader, "material_alpha", 1.0)
+    #lu.set_uniform(g_shader, "material_specular_exponent", 1.0)
     lu.set_uniform(g_shader, "material_specular_exponent", 55.0)
 
 
@@ -229,11 +234,28 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     '''
 
     sphere_centre = [0,0,0]
-    sphere_centre = [np.random.random() * 500 - 250, np.random.random() * 500 + 250, np.random.random() * 500 - 250]
-    radius = np.random.random() * 100 + 50
+    sphere_centre = [np.random.random() * 500 - 250, np.random.random() * 200 + 100, np.random.random() * 500 - 250]
+    radius = np.random.random() * 50 + 25
     #sphere_centre = [(time.time() % 1) * 100,0,0]
     #radius = 100
-    my_boys = mn.find_shadow_ellipse(light_position, sphere_centre, radius)
+    sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse(light_position, sphere_centre, radius)
+    #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha)
+    '''
+    uniform float shadowCentreX
+    uniform float shadowCentreZ
+    uniform float shadowLength
+    uniform float shadowWidth
+    uniform float shadowCosAlpha
+    uniform float shadowSinAlpha
+    '''
+    lu.set_uniform(g_shader, "shadowCentreX", sx)
+    lu.set_uniform(g_shader, "shadowCentreZ", sz-g_zTranslation)
+    lu.set_uniform(g_shader, "shadowLength", large_length)
+    lu.set_uniform(g_shader, "shadowWidth", small_length)
+    lu.set_uniform(g_shader, "shadowCosAlpha", cos_alpha)
+    lu.set_uniform(g_shader, "shadowSinAlpha", sin_alpha)
+
+    lu.my_draw_plane(view_to_clip, world_to_view, g_shader)
     lu.my_draw_sphere(sphere_centre, radius, colour, view_to_clip, world_to_view, g_shader, 4)
 
     #lu.draw_sphere(light_position, 10.0, colour, view_to_clip, world_to_view)
@@ -445,4 +467,4 @@ def load_model(modelName):
 
 magic.run_program(
     "COSC3000 - Major Project", 
-    960, 640, render_frame, init_resources, None, update)
+    640, 640, render_frame, init_resources, None, update)

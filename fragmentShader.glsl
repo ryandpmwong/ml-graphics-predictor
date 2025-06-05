@@ -31,6 +31,14 @@ uniform samplerCube environmentCubeTexture;
 uniform mat3 viewToWorldRotationTransform;
 
 
+uniform float shadowCentreX;
+uniform float shadowCentreZ;
+uniform float shadowLength;
+uniform float shadowWidth;
+uniform float shadowCosAlpha;
+uniform float shadowSinAlpha;
+
+
 
 out vec4 fragmentColor;
 
@@ -38,6 +46,17 @@ out vec4 fragmentColor;
 vec3 fresnelSchick(vec3 r0, float cosAngle)
 {
  	return r0 + (vec3(1.0) - r0) * pow(1.0 - cosAngle, 5.0);
+}
+
+float shadowVal(void)
+{
+	float dx = v2f_viewSpacePosition[0] - shadowCentreX;
+	float dz = v2f_viewSpacePosition[2] - shadowCentreZ;
+	float dist = pow((dz * shadowCosAlpha + dx * shadowSinAlpha) / shadowWidth, 2) + pow((dz * shadowSinAlpha - dx * shadowCosAlpha) / shadowLength, 2);
+	if (dist <= 1) {
+		return 1;
+	}
+	return 0;
 }
 
 void main() 
@@ -143,6 +162,16 @@ void main()
 	vec3 viewSpaceDirToLight = normalize(viewSpaceLightPosition- v2f_viewSpacePosition);
 	vec3 viewSpaceNormal = normalize(v2f_viewSpaceNormal);
 	float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirToLight));
+	/*
+	if (v2f_viewSpacePosition[1] < 100000000) {
+		if (shadowVal() == 1) {
+			incomingIntensity = 0;
+		}
+	}
+	if (v2f_viewSpacePosition[2] < 0) {
+		incomingIntensity = 0;
+	}
+	*/
 	vec3 incommingLight = incomingIntensity * lightColourAndIntensity;
 	vec3 materialDiffuse = texture(diffuse_texture, v2f_texCoord).xyz * material_diffuse_color;
 	vec3 viewSpaceDirToEye = normalize(-v2f_viewSpacePosition);
@@ -155,5 +184,13 @@ void main()
 	vec3 envSample = texture(environmentCubeTexture, worldSpaceReflectionDir).xyz;
 	vec3 fresnelSpecularEye = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToEye, viewSpaceNormal)));
 	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular + envSample * fresnelSpecularEye;
+	if (v2f_viewSpacePosition[1] < -90) {
+		if (shadowVal() == 1) {
+			incommingLight = vec3(0,0,0);
+		} else {
+			incommingLight = vec3(1,1,1);
+		}
+		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular;
+	}
 	fragmentColor = vec4(outgoingLight, material_alpha);
 }
