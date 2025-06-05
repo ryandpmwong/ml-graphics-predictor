@@ -930,16 +930,17 @@ def run_program(title: str, start_width: int, start_height: int,
 
         width, height = glfw.get_framebuffer_size(window)
 
-        begin_imgui_hud()
+        #begin_imgui_hud()
 
         if draw_ui:
             draw_ui(width, height)
 
         
         drawWidth = width
-        uiWidth = int(imgui.get_window_width())
+        '''uiWidth = int(imgui.get_window_width())
         if not uiWidth:
-            uiWidth = int(0.3 * width)
+            uiWidth = int(0.3 * width)'''
+        uiWidth = 0
 
         drawWidth -= uiWidth
 
@@ -949,7 +950,7 @@ def run_program(title: str, start_width: int, start_height: int,
 
         #mgui.show_test_window()
 
-        end_imgui_hud(impl)
+        #end_imgui_hud(impl)
         # Swap front and back buffers
         glfw.swap_buffers(window)
 

@@ -6,6 +6,7 @@ import magic
 import lab_utils as lu
 import numpy as np
 
+import time
 
 def flatten(*lll):
 	return [u for ll in lll for l in ll for u in l]
@@ -238,6 +239,7 @@ class ObjModel:
                     m["color"][ch] = [1,1,1]
                 if m["texture"][ch] != -1 and sum(m["color"][ch]) == 0.0:
                     m["color"][ch] = [1,1,1]
+        #print(materials)
         return materials
 
     def loadTexture(self, fileName, basePath, srgb):
@@ -289,6 +291,63 @@ class ObjModel:
             newChunks.append((material, chunkOffset, chunkCount, renderFlags))
         self.chunks = newChunks
 
+    def fake_render(self, shaderProgram = None, renderFlags = None, transforms = {}):
+        if not renderFlags:
+            renderFlags = self.RF_All
+
+        if not shaderProgram:
+            shaderProgram = self.defaultShader
+
+        # Filter chunks based of render flags
+        chunks = [ch for ch in self.chunks if ch[3] & renderFlags]
+
+        glBindVertexArray(self.vertexArrayObject)
+        glUseProgram(shaderProgram)
+
+        # define defaults (identity)
+        defaultTfms = {
+            "modelToClipTransform" : lu.Mat4(),
+            "modelToViewTransform" : lu.Mat4(),
+            "modelToViewNormalTransform" : lu.Mat3(),
+        }
+        # overwrite defaults
+        defaultTfms.update(transforms)
+        # upload map of transforms
+        for tfmName,tfm in defaultTfms.items():
+            loc = lu.get_uniform_location_debug(shaderProgram, tfmName)
+            tfm._set_open_gl_uniform(loc);
+
+        previousMaterial = None
+        for material, chunkOffset, chunkCount, renderFlags in chunks:
+            # as an optimization we only do this if the material has changed between chunks.
+            # for more efficiency still consider sorting chunks based on material (or fusing them?)
+            if material != previousMaterial:
+                previousMaterial = material
+                if self.overrideDiffuseTextureWithDefault:
+                    bindTexture(self.TU_Diffuse, self.defaultTextureOne, self.defaultTextureOne);
+                else:
+                    bindTexture(self.TU_Diffuse, material["texture"]["diffuse"], self.defaultTextureOne);
+                bindTexture(self.TU_Opacity, material["texture"]["opacity"], self.defaultTextureOne);
+                bindTexture(self.TU_Specular, material["texture"]["specular"], self.defaultTextureOne);
+                bindTexture(self.TU_Normal, material["texture"]["normal"], self.defaultNormalTexture);
+                # TODO: can I do uniform buffers from python (yes, I need to use that struct thingo!)
+                #uint32_t matUniformSize = sizeof(MaterialProperties_Std140);
+                #glBindBufferRange(GL_UNIFORM_BUFFER, UBS_MaterialProperties, m_materialPropertiesBuffer, (uint32_t)chunk.material->offset * matUniformSize, matUniformSize);
+                # TODO: this is very slow, it should be packed into an uniform buffer as per above!
+                for k,v in material["color"].items():
+
+                    '''t = time.time() % 1
+                    newv = [t * v[0], t * v[1], t * v[2]]
+                    v = newv'''
+
+                    glUniform3fv(lu.get_uniform_location_debug(shaderProgram, "material_%s_color"%k), 1, v)
+                glUniform1f(lu.get_uniform_location_debug(shaderProgram, "material_specular_exponent"), material["specularExponent"])
+                glUniform1f(lu.get_uniform_location_debug(shaderProgram, "material_alpha"), material["alpha"])
+    
+            #glDrawArrays(GL_TRIANGLES, chunkOffset, chunkCount)
+
+        glUseProgram(0);
+
     def render(self, shaderProgram = None, renderFlags = None, transforms = {}):
         if not renderFlags:
             renderFlags = self.RF_All
@@ -333,6 +392,11 @@ class ObjModel:
                 #glBindBufferRange(GL_UNIFORM_BUFFER, UBS_MaterialProperties, m_materialPropertiesBuffer, (uint32_t)chunk.material->offset * matUniformSize, matUniformSize);
                 # TODO: this is very slow, it should be packed into an uniform buffer as per above!
                 for k,v in material["color"].items():
+
+                    '''t = time.time() % 1
+                    newv = [t * v[0], t * v[1], t * v[2]]
+                    v = newv'''
+
                     glUniform3fv(lu.get_uniform_location_debug(shaderProgram, "material_%s_color"%k), 1, v)
                 glUniform1f(lu.get_uniform_location_debug(shaderProgram, "material_specular_exponent"), material["specularExponent"])
                 glUniform1f(lu.get_uniform_location_debug(shaderProgram, "material_alpha"), material["alpha"])

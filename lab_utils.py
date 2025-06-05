@@ -5,6 +5,8 @@ import numpy as np
 import math
 import imgui
 from PIL import Image
+
+import time
 #endregion
 #--- Globals ---#
 #region
@@ -849,6 +851,102 @@ def draw_sphere(position: Vec3, radius: float, colour: Vec3,
 
     glBindVertexArray(g_sphereVertexArrayObject)
     glDrawArrays(GL_TRIANGLES, 0, g_numSphereVerts)
+
+def bindTexture(texUnit, textureId, defaultTexture):
+	glActiveTexture(GL_TEXTURE0 + texUnit);
+	glBindTexture(GL_TEXTURE_2D, textureId if textureId != -1 else defaultTexture);
+
+def my_draw_sphere(position: Vec3, radius: float, colour: Vec3, 
+    viewToClipTransform: Mat4, worldToViewTransform: Mat4, shader, detail) -> None:
+    """
+        Draw a sphere.
+
+        Parameters:
+
+            position, radius, colour: describe the sphere's
+                appearance.
+            
+            viewToClipTransform, worldToViewTransform: associated
+                transform matrices
+
+            shader: shader
+    """
+    global g_sphereVertexArrayObject
+    global g_sphereShader
+    global g_numSphereVerts
+
+    modelToWorldTransform = make_translation(*position) \
+        * make_scale(radius, radius, radius)
+
+    if not g_sphereVertexArrayObject:
+        sphereVerts = create_sphere(detail)
+        g_numSphereVerts = len(sphereVerts)
+        g_sphereVertexArrayObject = create_vertex_array_object()
+        create_buffer_from_data(g_sphereVertexArrayObject, sphereVerts, 0)
+        # redundantly add as normals...
+        create_buffer_from_data(g_sphereVertexArrayObject, sphereVerts, 1)
+
+        '''attributes = {"positionIn" : 0, "normalIn" : 1}
+        g_sphereShader = build_shader(vertex_src, fragment_src, 
+                                     attributes)'''
+
+
+    glBindVertexArray(g_sphereVertexArrayObject)
+    glUseProgram(shader)
+    #set_uniform(g_sphereShader, "sphereColour", colour)
+
+    modelToClipTransform = viewToClipTransform * worldToViewTransform * modelToWorldTransform
+    modelToViewTransform = worldToViewTransform * modelToWorldTransform
+    modelToViewNormalTransform = inverse(transpose(Mat3(modelToViewTransform)))
+    '''set_uniform(shader, "modelToClipTransform", modelToClipTransform);
+    set_uniform(shader, "modelToViewTransform", modelToViewTransform);
+    set_uniform(shader, "modelToViewNormalTransform", modelToViewNormalTransform);'''
+
+    transforms = {
+        "modelToClipTransform" : modelToClipTransform,
+        "modelToViewTransform" : modelToViewTransform,
+        "modelToViewNormalTransform" : modelToViewNormalTransform,
+    }
+    # define defaults (identity)
+    defaultTfms = {
+        "modelToClipTransform" : Mat4(),
+        "modelToViewTransform" : Mat4(),
+        "modelToViewNormalTransform" : Mat3(),
+    }
+    # overwrite defaults
+    defaultTfms.update(transforms)
+    # upload map of transforms
+    for tfmName,tfm in defaultTfms.items():
+        loc = get_uniform_location_debug(shader, tfmName)
+        tfm._set_open_gl_uniform(loc);
+
+    #55.0
+    '''material = {'color': {'diffuse': [0.5, 0.35, 0.06], 'ambient': [0.0, 0.0, 0.0], 'specular': [1.0, 0.71, 0.12], 'emissive': [0.0, 0.0, 0.0]},
+                'texture': {'diffuse': -1, 'opacity': -1, 'specular': -1, 'normal': -1},
+                'alpha': 1.0,
+                'specularExponent': time.time() % 60,
+                'offset': 0}
+    TU_Diffuse = 0
+    TU_Opacity = 1
+    TU_Specular = 2
+    TU_Normal = 3
+    defaultTextureOne = glGenTextures(1)
+    defaultNormalTexture = glGenTextures(1)
+    bindTexture(TU_Diffuse, material["texture"]["diffuse"], defaultTextureOne);
+    bindTexture(TU_Opacity, material["texture"]["opacity"], defaultTextureOne);
+    bindTexture(TU_Specular, material["texture"]["specular"], defaultTextureOne);
+    bindTexture(TU_Normal, material["texture"]["normal"], defaultNormalTexture);
+    for k,v in material["color"].items():
+        glUniform3fv(get_uniform_location_debug(shader, "material_%s_color"%k), 1, v)
+    glUniform1f(get_uniform_location_debug(shader, "material_specular_exponent"), material["specularExponent"])
+    glUniform1f(get_uniform_location_debug(shader, "material_alpha"), material["alpha"])'''
+
+    #glBindVertexArray(g_sphereVertexArrayObject)
+    glDrawArrays(GL_TRIANGLES, 0, g_numSphereVerts)
+    glUseProgram(0)
+
+def my_draw_plane():
+    pass
 
 def flatten(array: list[any], data_type: np.dtype) -> np.ndarray:
     """

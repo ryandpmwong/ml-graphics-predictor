@@ -12,6 +12,8 @@ import lab_utils as lu
 from ObjModel import ObjModel
 import glob
 import os
+
+import main as mn
 #endregion
 #--- Globals ---#
 #region
@@ -23,7 +25,8 @@ g_lightDistance = 250.0
 g_lightColourAndIntensity = lu.vec3(0.9, 0.9, 0.6)
 g_ambientLightColourAndIntensity = lu.vec3(0.1)
 
-g_camera = lu.OrbitCamera([0,0,0], 10.0, -25.0, -35.0)
+#g_camera = lu.OrbitCamera([0,0,0], 10.0, -25.0, -35.0)
+g_camera = lu.OrbitCamera([0,500,0], 1000.0, 0.0, 0.0)
 g_yFovDeg = 45.0
 
 g_currentModelName = "shaderBall1.obj"
@@ -32,13 +35,15 @@ g_vertexShaderSource = ObjModel.defaultVertexShader
 g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_currentFragmentShaderName = 'fragmentShader.glsl'
 
-g_currentEnvMapName = "None"
+g_currentEnvMapName = "Daylight"
 
 g_environmentCubeMap = None
 
 g_reloadTimeout = 1.0
 
 g_currentMaterial = 0
+
+my_counter = 0
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -68,15 +73,23 @@ def update(dt: float, keys: dict[str, bool],
     global g_lightPitch
     global g_lightPitchSpeed
 
-    g_lightYaw += g_lightYawSpeed * dt
+    """g_lightYaw += g_lightYawSpeed * dt
     g_lightPitch += g_lightPitchSpeed * dt
 
     g_reloadTimeout -= dt
     if g_reloadTimeout <= 0.0:
         reLoad_shader()
-        g_reloadTimeout = 1.0
+        g_reloadTimeout = 1.0"""
 
     g_camera.update(dt, keys, mouse_delta)
+
+def setDefaultUniformBindings(shaderProgram):
+    assert glGetIntegerv(GL_CURRENT_PROGRAM) == shaderProgram
+
+    glUniform1i(lu.get_uniform_location_debug(shaderProgram, "diffuse_texture"), ObjModel.TU_Diffuse);
+    glUniform1i(lu.get_uniform_location_debug(shaderProgram, "opacity_texture"), ObjModel.TU_Opacity);
+    glUniform1i(lu.get_uniform_location_debug(shaderProgram, "specular_texture"), ObjModel.TU_Specular);
+    glUniform1i(lu.get_uniform_location_debug(shaderProgram, "normal_texture"), ObjModel.TU_Normal);
 
 def render_frame(x_offset: int, width: int, height: int) -> None:
     """
@@ -91,11 +104,16 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_camera
     global g_yFovDeg
     global g_model
+    global my_counter
 
-    light_rotation = lu.Mat3(lu.make_rotation_y(math.radians(g_lightYaw))) \
+    colour = np.array([1,1,0,1], np.float32)
+
+    '''light_rotation = lu.Mat3(lu.make_rotation_y(math.radians(g_lightYaw))) \
         * lu.Mat3(lu.make_rotation_x(math.radians(g_lightPitch))) 
     light_position = g_model.centre \
-        + light_rotation * lu.vec3(0,0,g_lightDistance)
+        + light_rotation * lu.vec3(0,0,g_lightDistance)'''
+    
+    light_position = [0,2500,0]
 
     """
         This configures the fixed-function transformation from 
@@ -105,7 +123,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     """
     glViewport(x_offset, 0, width, height)
     # Set the colour we want the frame buffer cleared to, 
-    glClearColor(0.05, 0.1, 0.05, 1.0)
+    glClearColor(0.0, 0.2, 1.0, 1.0)
     """
         Tell OpenGL to clear the render target to the clear values 
         for both depth and colour buffers (depth uses the default)
@@ -163,16 +181,68 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         "modelToViewNormalTransform" : model_to_view_normal,
     }
     
-    g_model.render(g_shader, ObjModel.RF_Opaque, transforms)
-    glEnable(GL_BLEND)
+    #g_model.render(g_shader, ObjModel.RF_Opaque, transforms)
+
+    if my_counter == 0:
+        g_model.fake_render(g_shader, ObjModel.RF_Opaque, transforms)
+        my_counter = 1
+    
+    # ts stuff for transparent objects
+    '''glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     flags = ObjModel.RF_Transparent| ObjModel.RF_AlphaTested
     g_model.render(g_shader, flags, transforms)
-    glDisable(GL_BLEND)
+    glDisable(GL_BLEND)'''
 
-    colour = np.array([1,1,0,1], np.float32)
-    lu.draw_sphere(light_position, 10.0, colour, view_to_clip, world_to_view)
+    glUseProgram(g_shader)
 
+    """material = {'color': {'diffuse': [0.5, 0.35, 0.06], 'ambient': [0.0, 0.0, 0.0], 'specular': [1.0, 0.71, 0.12], 'emissive': [0.0, 0.0, 0.0]},
+                'texture': {'diffuse': -1, 'opacity': -1, 'specular': -1, 'normal': -1},
+                'alpha': 1.0,
+                'specularExponent': time.time() % 60,
+                'offset': 0}
+    TU_Diffuse = 0
+    TU_Opacity = 1
+    TU_Specular = 2
+    TU_Normal = 3
+    defaultTextureOne = glGenTextures(1)
+    defaultNormalTexture = glGenTextures(1)
+    lu.bindTexture(TU_Diffuse, material["texture"]["diffuse"], defaultTextureOne);
+    lu.bindTexture(TU_Opacity, material["texture"]["opacity"], defaultTextureOne);
+    lu.bindTexture(TU_Specular, material["texture"]["specular"], defaultTextureOne);
+    lu.bindTexture(TU_Normal, material["texture"]["normal"], defaultNormalTexture);"""
+
+    color_guy = [1.0, 1.0, 1.0]
+
+    lu.set_uniform(g_shader, "material_diffuse_color", color_guy)
+    lu.set_uniform(g_shader, "material_specular_color", color_guy)
+    lu.set_uniform(g_shader, "material_emissive_color", [0.0, 0.0, 0.0])
+
+    lu.set_uniform(g_shader, "material_alpha", 1.0)
+    lu.set_uniform(g_shader, "material_specular_exponent", 55.0)
+
+
+    '''
+    // Textures set by OBJModel (names must be bound to the right texture unit, ObjModel.setDefaultUniformBindings helps with that.
+    uniform sampler2D diffuse_texture;
+    uniform sampler2D specular_texture;
+    '''
+
+    sphere_centre = [0,0,0]
+    sphere_centre = [np.random.random() * 500 - 250, np.random.random() * 500 + 250, np.random.random() * 500 - 250]
+    radius = np.random.random() * 100 + 50
+    #sphere_centre = [(time.time() % 1) * 100,0,0]
+    #radius = 100
+    my_boys = mn.find_shadow_ellipse(light_position, sphere_centre, radius)
+    lu.my_draw_sphere(sphere_centre, radius, colour, view_to_clip, world_to_view, g_shader, 4)
+
+    #lu.draw_sphere(light_position, 10.0, colour, view_to_clip, world_to_view)
+
+    #lu.draw_sphere([0,0,0], 100.0, colour, view_to_clip, world_to_view)
+
+
+
+'''
 def draw_ui(width: int, height: int) -> None:
     """
         Draws the UI overlay
@@ -268,6 +338,7 @@ def draw_ui(width: int, height: int) -> None:
         imgui.tree_pop()
 
     g_model.updateMaterials()
+'''
 
 def init_resources() -> None:
     """
@@ -279,7 +350,7 @@ def init_resources() -> None:
     global g_environmentCubeMap
 
     g_environmentCubeMap = lu.load_cubemap(
-        "data/cube_maps/" + g_currentEnvMapName + "/%s.jpg", True)   
+        "data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)   
     load_model(g_currentModelName)
 
     glEnable(GL_DEPTH_TEST)
@@ -287,10 +358,24 @@ def init_resources() -> None:
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
     glEnable(GL_FRAMEBUFFER_SRGB)
 
+
+    #self.defaultTextureOne = glGenTextures(1);
+    glBindTexture(GL_TEXTURE_2D, glGenTextures(1));
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_FLOAT, [1.0, 1.0, 1.0, 1.0]);
+
+    #self.defaultNormalTexture = glGenTextures(1);
+    glBindTexture(GL_TEXTURE_2D, glGenTextures(1));
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1, 1, 0, GL_RGBA, GL_FLOAT, [0.5, 0.5, 0.5, 1.0]);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     # Build with default first since that really should work, so then we have some fallback
     g_shader = build_shader(g_vertexShaderSource, g_fragmentShaderSource)
 
     reLoad_shader()    
+
+    glUseProgram(g_shader)
+    setDefaultUniformBindings(g_shader)
+    glUseProgram(0)
 #endregion
 #--- Functions ---#
 #region
@@ -348,12 +433,16 @@ def load_model(modelName):
     g_model = ObjModel("data/" + modelName)
     #g_model = ObjModel("data/house.obj");
 
-    g_camera.target = g_model.centre
-    g_camera.distance = lu.length(g_model.centre - g_model.aabbMin) * 3.1
+    #g_camera.target = g_model.centre
+    #g_camera.distance = lu.length(g_model.centre - g_model.aabbMin) * 3.1
     g_lightDistance = lu.length(g_model.centre - g_model.aabbMin) * 1.3
 #endregion
 # This does all the openGL setup and window creation needed
 # it hides a lot of things that we will want to get a handle on as time goes by.
-magic.run_program(
+"""magic.run_program(
     "COSC3000 - Computer Graphics Lab 4, part 1", 
-    960, 640, render_frame, init_resources, draw_ui, update)
+    960, 640, render_frame, init_resources, draw_ui, update)"""
+
+magic.run_program(
+    "COSC3000 - Major Project", 
+    960, 640, render_frame, init_resources, None, update)
