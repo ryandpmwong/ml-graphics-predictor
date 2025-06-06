@@ -23,12 +23,12 @@ g_lightPitch = -75.0
 g_lightPitchSpeed = 0.0#30.0
 g_lightDistance = 250.0
 g_lightColourAndIntensity = lu.vec3(0.9, 0.9, 0.6)
-g_ambientLightColourAndIntensity = lu.vec3(0.1)
+g_ambientLightColourAndIntensity = lu.vec3(0.5)
 
 #g_camera = lu.OrbitCamera([0,0,0], 10.0, -25.0, -35.0)
 #g_camera = lu.OrbitCamera([0,500,0], 1000.0, 0.0, 0.0)
 g_zTranslation = 1000
-g_yTranslation = 100
+g_yTranslation = 250
 g_camera = lu.FreeCamera([0,g_yTranslation,g_zTranslation],180,0)
 g_yFovDeg = 45.0
 
@@ -47,6 +47,9 @@ g_reloadTimeout = 1.0
 g_currentMaterial = 0
 
 my_counter = 0
+
+g_savedImageCounter = 0
+g_maxImages = 1000
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -109,6 +112,8 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_model
     global my_counter
     global g_zTranslation
+    global g_maxImages
+    global g_savedImageCounter
 
     colour = np.array([1,1,0,1], np.float32)
 
@@ -234,12 +239,15 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     '''
 
     sphere_centre = [0,0,0]
-    sphere_centre = [np.random.random() * 500 - 250, np.random.random() * 200 + 100, np.random.random() * 500 - 250]
-    radius = np.random.random() * 50 + 25
+    sphere_centre = [round(np.random.random() * 400 - 200, 4), round(np.random.random() * 400 + 100, 4), round(np.random.random() * 400 - 200, 4)]
+    radius = round(np.random.random() * 50 + 25, 4)
     #sphere_centre = [(time.time() % 1) * 100,0,0]
     #radius = 100
-    sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse(light_position, sphere_centre, radius)
-    #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha)
+    #sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
+    #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
+    '''sphere_centre = [0.0, 100.0, 200.0]
+    radius = 75.0'''
+    sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_plane_source([0.0, -1.0, 0.0], sphere_centre, radius)
     '''
     uniform float shadowCentreX
     uniform float shadowCentreZ
@@ -261,6 +269,10 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     #lu.draw_sphere(light_position, 10.0, colour, view_to_clip, world_to_view)
 
     #lu.draw_sphere([0,0,0], 100.0, colour, view_to_clip, world_to_view)
+    if g_savedImageCounter < g_maxImages:
+        mn.save_screen(width, height, f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat", sphere_centre, radius)
+        g_savedImageCounter += 1
+        #mn.load_and_display_screen("saved_screens/test_folder/new_test_file.dat")
 
 
 

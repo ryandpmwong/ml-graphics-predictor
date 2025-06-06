@@ -52,7 +52,7 @@ float shadowVal(void)
 {
 	float dx = v2f_viewSpacePosition[0] - shadowCentreX;
 	float dz = v2f_viewSpacePosition[2] - shadowCentreZ;
-	float dist = pow((dz * shadowCosAlpha + dx * shadowSinAlpha) / shadowWidth, 2) + pow((dz * shadowSinAlpha - dx * shadowCosAlpha) / shadowLength, 2);
+	float dist = pow((dz * shadowCosAlpha + dx * shadowSinAlpha) / shadowLength, 2) + pow((dz * shadowSinAlpha - dx * shadowCosAlpha) / shadowWidth, 2);
 	if (dist <= 1) {
 		return 1;
 	}
@@ -184,7 +184,7 @@ void main()
 	vec3 envSample = texture(environmentCubeTexture, worldSpaceReflectionDir).xyz;
 	vec3 fresnelSpecularEye = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToEye, viewSpaceNormal)));
 	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular + envSample * fresnelSpecularEye;
-	if (v2f_viewSpacePosition[1] < -90) {
+	if (v2f_viewSpacePosition[1] == -250) {
 		if (shadowVal() == 1) {
 			incommingLight = vec3(0,0,0);
 		} else {
