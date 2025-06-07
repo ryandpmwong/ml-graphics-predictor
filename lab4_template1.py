@@ -34,9 +34,17 @@ g_yFovDeg = 45.0
 
 g_currentModelName = "shaderBall1.obj"
 g_model = None
+g_groundModel = None
+g_wallModel = None
 g_vertexShaderSource = ObjModel.defaultVertexShader
 g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_currentFragmentShaderName = 'fragmentShader.glsl'
+#g_currentFragmentShaderName = 'fragmentShader1.glsl'
+#g_currentFragmentShaderName = 'fragmentShader2.glsl'
+g_level = 3
+
+shaders = ['fragmentShader1.glsl', 'fragmentShader2.glsl', 'fragmentShader.glsl']
+g_currentFragmentShaderName = shaders[g_level - 1]
 
 g_currentEnvMapName = "Daylight"
 
@@ -49,7 +57,7 @@ g_currentMaterial = 0
 my_counter = 0
 
 g_savedImageCounter = 0
-g_maxImages = 1000
+g_maxImages = 1
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -87,7 +95,8 @@ def update(dt: float, keys: dict[str, bool],
         reLoad_shader()
         g_reloadTimeout = 1.0"""
 
-    g_camera.update(dt, keys, mouse_delta)
+    #g_camera.update(dt, keys, mouse_delta)
+    g_camera.update(dt, keys, [0.0, 0.0])
 
 def setDefaultUniformBindings(shaderProgram):
     assert glGetIntegerv(GL_CURRENT_PROGRAM) == shaderProgram
@@ -114,6 +123,9 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_zTranslation
     global g_maxImages
     global g_savedImageCounter
+    global g_groundModel
+    global g_wallModel
+    global g_level
 
     colour = np.array([1,1,0,1], np.float32)
 
@@ -140,7 +152,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     world_to_view = g_camera.get_world_to_view_matrix(lu.vec3(0,1,0))
-    view_to_clip = lu.make_perspective(g_yFovDeg, width/height, 0.1, 1500.0)
+    view_to_clip = lu.make_perspective(g_yFovDeg, width/height, 0.1, 2500.0)
 
     model_to_view = world_to_view
     
@@ -221,7 +233,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     lu.bindTexture(TU_Specular, material["texture"]["specular"], defaultTextureOne);
     lu.bindTexture(TU_Normal, material["texture"]["normal"], defaultNormalTexture);"""
 
-    color_guy = [1.0, 1.0, 1.0]
+    color_guy = [1.0, 0.3, 0.0]
 
     lu.set_uniform(g_shader, "material_diffuse_color", color_guy)
     lu.set_uniform(g_shader, "material_specular_color", [0.1, 0.1, 0.1])
@@ -263,116 +275,24 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     lu.set_uniform(g_shader, "shadowCosAlpha", cos_alpha)
     lu.set_uniform(g_shader, "shadowSinAlpha", sin_alpha)
 
-    lu.my_draw_plane(view_to_clip, world_to_view, g_shader)
+    #lu.my_draw_plane(view_to_clip, world_to_view, g_shader)
     lu.my_draw_sphere(sphere_centre, radius, colour, view_to_clip, world_to_view, g_shader, 4)
+
+    if g_level == 3:
+        g_groundModel.render(g_shader, ObjModel.RF_Opaque, transforms)
+        g_wallModel.render(g_shader, ObjModel.RF_Opaque, transforms)
+    else:
+        lu.my_draw_plane(view_to_clip, world_to_view, g_shader)
 
     #lu.draw_sphere(light_position, 10.0, colour, view_to_clip, world_to_view)
 
     #lu.draw_sphere([0,0,0], 100.0, colour, view_to_clip, world_to_view)
     if g_savedImageCounter < g_maxImages:
-        mn.save_screen(width, height, f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat", sphere_centre, radius)
+        file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
+        file_name = "saved_screens/test_folder/my_test_file.dat"
+        #mn.save_screen(width, height, file_name, sphere_centre, radius)
         g_savedImageCounter += 1
-        #mn.load_and_display_screen("saved_screens/test_folder/new_test_file.dat")
-
-
-
-'''
-def draw_ui(width: int, height: int) -> None:
-    """
-        Draws the UI overlay
-
-        Parameters:
-        
-            width, height: the size of the frame buffer, or window
-    """
-
-    global g_yFovDeg
-    global g_currentMaterial
-    global g_lightYaw
-    global g_lightYawSpeed
-    global g_lightPitch
-    global g_lightPitchSpeed
-    global g_lightDistance
-    global g_lightColourAndIntensity
-    global g_ambientLightColourAndIntensity
-    global g_environmentCubeMap
-    global g_currentEnvMapName
-    global g_currentModelName
-    global g_currentFragmentShaderName
-    global g_model
-
-    #global g_cameraYawDeg
-    #global g_cameraPitchDeg
-
-    models = sorted([os.path.basename(p) for p in glob.glob("data/*.obj", recursive = False)]) + [""]
-    ind = models.index(g_currentModelName)
-    _,ind = imgui.combo("Model", ind, models)
-    if models[ind] != g_currentModelName:
-        g_currentModelName = models[ind]
-        load_model(g_currentModelName)   
-
-    fragmentShaders = sorted([os.path.basename(p) for p in glob.glob("frag*.glsl", recursive = False)]) + [""]
-    ind = fragmentShaders.index(g_currentFragmentShaderName)
-    _,ind = imgui.combo("Fragment Shader", ind, fragmentShaders)
-    if fragmentShaders[ind] != g_currentFragmentShaderName:
-        g_currentFragmentShaderName = fragmentShaders[ind]
-        reLoad_shader()
-
-    if imgui.tree_node("Light", imgui.TREE_NODE_DEFAULT_OPEN):
-        imgui.columns(2)
-        _,g_lightYaw = imgui.slider_float("Yaw (Deg)", g_lightYaw, -360.00, 360.0)
-        imgui.next_column()
-        _,g_lightYawSpeed = imgui.slider_float("YSpeed", g_lightYawSpeed, -180.00, 180.0)
-        imgui.next_column()
-        _,g_lightPitch = imgui.slider_float("Pitch (Deg)", g_lightPitch, -360.00, 360.0)
-        imgui.next_column()
-        _,g_lightPitchSpeed = imgui.slider_float("PSpeed", g_lightPitchSpeed, -180.00, 180.0)
-        imgui.next_column()
-        _,g_lightDistance = imgui.slider_float("Distance", g_lightDistance, 1.00, 1000.0)
-        _,g_lightColourAndIntensity = lu.imguiX_color_edit3_list("ColourAndIntensity",  g_lightColourAndIntensity)
-        imgui.columns(1)
-        imgui.tree_pop()
-    if imgui.tree_node("Environment", imgui.TREE_NODE_DEFAULT_OPEN):
-        _,g_ambientLightColourAndIntensity = lu.imguiX_color_edit3_list("AmbientLight",  g_ambientLightColourAndIntensity)
-        cubeMaps = sorted([os.path.basename(p) for p in glob.glob("data/cube_maps/*", recursive = False)]) + [""]
-        ind = cubeMaps.index(g_currentEnvMapName)
-        _,ind = imgui.combo("EnvironmentTexture", ind, cubeMaps)
-        if cubeMaps[ind] != g_currentEnvMapName:
-            glDeleteTextures([g_environmentCubeMap])
-            g_currentEnvMapName = cubeMaps[ind]
-            #g_environmentCubeMap = lu.load_cubemap("data/cube_maps/" + g_currentEnvMapName + "/%s.jpg", True)   
-            g_environmentCubeMap = lu.load_cubemap("data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)
-        imgui.tree_pop()
-
-    #_,g_yFovDeg = imgui.slider_float("Y-Fov (Degrees)", g_yFovDeg, 1.00, 90.0)
-    g_camera.draw_ui()
-    if imgui.tree_node("Materials", imgui.TREE_NODE_DEFAULT_OPEN):
-        names = [str(s) for s in g_model.materials.keys()]
-        _,g_currentMaterial = imgui.combo("Material Name", g_currentMaterial, names + [''])
-        m = g_model.materials[names[g_currentMaterial]]
-        cs = m["color"]
-        _,cs["diffuse"] = lu.imguiX_color_edit3_list("diffuse",  cs["diffuse"])
-        _,cs["specular"] = lu.imguiX_color_edit3_list("specular", cs["specular"])
-        _,cs["emissive"] = lu.imguiX_color_edit3_list("emissive", cs["emissive"])
-        imgui.columns(2)
-        for n,v in m["texture"].items():
-            imgui.image(v if v >= 0 else g_model.defaultTextureOne, 32, 32, (0,1), (1,0))
-            imageHovered = imgui.is_item_hovered()
-            imgui.next_column()
-            imgui.label_text("###"+n, n)
-            imgui.next_column()
-            if (imageHovered or imgui.is_item_hovered()) and v >= 0:
-                imgui.begin_tooltip()
-                w,h,name = g_model.texturesById[v]
-                imgui.image(v, w / 2, h / 2, (0,1), (1,0))
-                imgui.end_tooltip()
-        imgui.columns(1)
-        _,m["alpha"] = imgui.slider_float("alpha", m["alpha"], 0.0, 1.0)
-        _,m["specularExponent"] = imgui.slider_float("specularExponent", m["specularExponent"], 1.0, 2000.0)
-        imgui.tree_pop()
-
-    g_model.updateMaterials()
-'''
+        #mn.load_and_display_screen(file_name)
 
 def init_resources() -> None:
     """
@@ -464,8 +384,12 @@ def reLoad_shader():
 def load_model(modelName):
     global g_model
     global g_lightDistance
+    global g_groundModel
+    global g_wallModel
     g_model = ObjModel("data/" + modelName)
     #g_model = ObjModel("data/house.obj");
+    g_groundModel = ObjModel("data/ground.obj")
+    g_wallModel = ObjModel("data/wall.obj")
 
     #g_camera.target = g_model.centre
     #g_camera.distance = lu.length(g_model.centre - g_model.aabbMin) * 3.1

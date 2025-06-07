@@ -1,0 +1,9 @@
+newmtl ground
+illum 4
+Kd 0.95 0.95 0.95
+map_Kd grass.bmp
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.50 0.50 0.50
+Ns 18.00

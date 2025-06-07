@@ -180,10 +180,7 @@ void main()
 	float specularIntensity = specularNormalizationFactor * pow(max(0.0, dot(halfVector, viewSpaceNormal)), material_specular_exponent);
 	vec3 materialSpecular = texture(specular_texture, v2f_texCoord).xyz * material_specular_color;
 	vec3 fresnelSpecular = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToLight, halfVector)));
-	vec3 worldSpaceReflectionDir = viewToWorldRotationTransform * reflect(-viewSpaceDirToEye, viewSpaceNormal);
-	vec3 envSample = texture(environmentCubeTexture, worldSpaceReflectionDir).xyz;
-	vec3 fresnelSpecularEye = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToEye, viewSpaceNormal)));
-	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular + envSample * fresnelSpecularEye;
+	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular;
 	if (v2f_viewSpacePosition[1] == -250) {
 		materialDiffuse = vec3(0.3, 1.0, 0.0);
 		if (shadowVal() == 1) {
@@ -191,13 +188,7 @@ void main()
 		} else {
 			incommingLight = vec3(1,1,1);
 		}
-		// vec3 thingo = vec3(v2f_texCoord[0], -1000.0, v2f_texCoord[1]);
-		// vec3 skyBox = texture(environmentCubeTexture, thingo).xyz;
-		vec3 thingy = texture(diffuse_texture, v2f_texCoord).xyz;
-		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * thingy;
-	} else if (v2f_viewSpacePosition[2] == -2000) {
-		vec3 thingy = texture(diffuse_texture, v2f_texCoord).xyz;
-		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * thingy;
+		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular;
 	}
 	fragmentColor = vec4(outgoingLight, material_alpha);
 }
