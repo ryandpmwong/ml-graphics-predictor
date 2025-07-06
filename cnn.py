@@ -27,7 +27,7 @@ from tqdm import tqdm # Progress bar during training
 import os
 import pandas as pd
 import numpy as np
-import main as mn
+import graphics.graphics_utils as mn
 
 def make_dataset_annotations_file(dir, dest_path):
     df = pd.DataFrame(columns=["img_name","x","y","z","r"])

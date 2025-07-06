@@ -6,14 +6,14 @@ import numpy as np
 import time
 #import imgui
 
-import magic
+import magic as magic
 # We import the 'lab_utils' module as 'lu' to save a bit of typing while still clearly marking where the code came from.
 import lab_utils as lu
 from ObjModel import ObjModel
 import glob
 import os
 
-import main as mn
+import graphics_utils as gu
 #endregion
 #--- Globals ---#
 #region
@@ -38,13 +38,10 @@ g_groundModel = None
 g_wallModel = None
 g_vertexShaderSource = ObjModel.defaultVertexShader
 g_fragmentShaderSource = ObjModel.defaultFragmentShader
-g_currentFragmentShaderName = 'fragmentShader.glsl'
-#g_currentFragmentShaderName = 'fragmentShader1.glsl'
-#g_currentFragmentShaderName = 'fragmentShader2.glsl'
 g_startTime = 0
 g_level = 3
 
-shaders = ['fragmentShader1.glsl', 'fragmentShader2.glsl', 'fragmentShader.glsl']
+shaders = ['graphics/fragmentShader1.glsl', 'graphics/fragmentShader2.glsl', 'graphics/fragmentShader.glsl']
 g_currentFragmentShaderName = shaders[g_level - 1]
 
 #g_sphere_centre = [round(np.random.random() * 400 - 200, 4), round(np.random.random() * 400 + 100, 4), round(np.random.random() * 400 - 200, 4)]
@@ -265,7 +262,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     radius = round(np.random.random() * 50 + 25, 4)
     #sphere_centre = [(time.time() % 1) * 100,0,0]
     #radius = 100
-    #sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
+    #sx, sz, small_length, large_length, sin_alpha, cos_alpha = gu.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
     #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
     '''sphere_centre = [0.0, 100.0, 200.0]
     radius = 75.0'''
@@ -297,10 +294,10 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         #sphere_centre = [50,250,(time.time() % 5) * 100 - 500]
         #radius = 50
         #sphere_centre = [0.0, 250.0, 0.0]
-        sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
+        sx, sz, small_length, large_length, sin_alpha, cos_alpha = gu.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
         #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
     else:
-        sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_plane_source([1.0, -1.0, 0.0], sphere_centre, radius)
+        sx, sz, small_length, large_length, sin_alpha, cos_alpha = gu.find_shadow_ellipse_plane_source([1.0, -1.0, 0.0], sphere_centre, radius)
     '''
     uniform float shadowCentreX
     uniform float shadowCentreZ
@@ -332,9 +329,9 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         #file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
         file_name = "saved_screens/test_folder/my_test_file.dat"
         file_name = "saved_screens/test_folder/far_shader_larger_1.dat"
-        file_name = "saved_screens/test_folder/test_test.dat"
+        file_name = "saved_screens/test_folder/test_test_test_test.dat"
         #file_name = f"saved_screens/level_2_screens/screen_{g_savedImageCounter}.dat"
-        mn.save_screen(width, height, file_name, sphere_centre, radius)
+        gu.save_screen(width, height, file_name, sphere_centre, radius)
         if g_maxImages > 100 and g_savedImageCounter % (g_maxImages // 100) == 0:
             percentdone = g_savedImageCounter / g_maxImages
             if percentdone != 0 and percentdone != 1:
@@ -343,7 +340,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
                 esttimeleft = curtime / percentdone * (1 - percentdone)
                 print(f"taken {curtime}, estimated {esttimeleft} left")
         g_savedImageCounter += 1
-        mn.load_and_display_screen(file_name)
+        gu.load_and_display_screen(file_name)
 
 def init_resources() -> None:
     """
@@ -418,7 +415,7 @@ def reLoad_shader():
     global g_shader
     
     vertexShader = ""
-    with open('vertexShader.glsl') as f:
+    with open('graphics/vertexShader.glsl') as f:
         vertexShader = f.read()
     fragmentShader = ""
     with open(g_currentFragmentShaderName) as f:
@@ -451,15 +448,8 @@ def load_model(modelName):
 #endregion
 # This does all the openGL setup and window creation needed
 # it hides a lot of things that we will want to get a handle on as time goes by.
-"""magic.run_program(
-    "COSC3000 - Computer Graphics Lab 4, part 1", 
-    960, 640, render_frame, init_resources, draw_ui, update)"""
-
-"""magic.run_program(
-    "COSC3000 - Major Project", 
-    256, 256, render_frame, init_resources, None, update)"""
 
 
 magic.run_program(
-    "COSC3000 - Major Project", 
+    "ML Graphics Predictor", 
     960, 960, render_frame, init_resources, None, update)

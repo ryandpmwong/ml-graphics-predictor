@@ -4,18 +4,6 @@ import matplotlib.pyplot as plt
 
 import struct
 
-'''def find_shadow_circle(light_pos, sphere_centre, sphere_radius):
-    c = np.array(sphere_centre)
-    sx = c[0]
-    sz = c[2]
-
-    small_length = sphere_radius
-    large_length = sphere_radius
-
-    sin_alpha = 0.0
-    cos_alpha = 1.0
-    return (sx, sz, small_length, large_length, sin_alpha, cos_alpha)'''
-
 def find_shadow_ellipse_plane_source(light_direction, sphere_centre, sphere_radius):
     """
     Finds the shape of the shadow cast onto the plane y = 0
@@ -145,24 +133,3 @@ def display_screen(width, height, screen):
 def load_and_display_screen(filename):
     width, height, _, _, _, _, pixels = load_screen(filename)
     display_screen(width, height, pixels)
-
-
-'''def test_save_screen(width, height, filename, sphere_centre, sphere_radius):
-    # hi
-    pixels = [12,0,0,0,90,98,76,54,32]
-    x, y, z = sphere_centre
-    with open(filename, "xb") as bf:
-        #bf.write(bytearray([width, height, x, y, z, sphere_radius]))
-        bf.write(struct.pack("qqqqqq", width, height, x, y, z, sphere_radius))
-
-        #bf.write(bytearray(pixels))
-        bf.write(struct.pack("B" * len(pixels), *pixels))
-
-def test():
-    test_save_screen(3,3,"saved_screens/test_folder/test_file.dat", [314,159,264], 5280)
-    width, height, x, y, z, sphere_radius, pixels = load_screen("saved_screens/test_folder/test_file.dat")
-    display_screen(width, height, pixels)'''
-
-#test()
-
-#load_and_display_screen("saved_screens/test_folder/example_3.dat")

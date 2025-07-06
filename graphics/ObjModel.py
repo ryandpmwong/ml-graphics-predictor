@@ -2,7 +2,7 @@ from OpenGL.GL import *
 import os
 from PIL import Image
 from ctypes import sizeof, c_float, c_void_p, c_uint, string_at
-import magic
+import magic as magic
 import lab_utils as lu
 import numpy as np
 
