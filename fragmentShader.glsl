@@ -183,9 +183,23 @@ void main()
 	vec3 worldSpaceReflectionDir = viewToWorldRotationTransform * reflect(-viewSpaceDirToEye, viewSpaceNormal);
 	vec3 envSample = texture(environmentCubeTexture, worldSpaceReflectionDir).xyz;
 	vec3 fresnelSpecularEye = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToEye, viewSpaceNormal)));
-	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular + envSample * fresnelSpecularEye;
-	if (v2f_viewSpacePosition[1] == -250) {
-		materialDiffuse = vec3(0.3, 1.0, 0.0);
+
+	// vec3 ambientLight = ambientLightColourAndIntensity;
+
+	/*
+	vec3 ambientLight = vec3(0.0, 0.2, 1.0);
+	if (viewSpaceNormal[1] < 0) {
+		ambientLight = vec3(0.3, 1.0, 0.0);
+	}
+	*/
+
+	vec3 ambientLight = (viewSpaceNormal[1] < 0) ? vec3(0.3, 1.0, 0.0) : vec3(0.0, 0.2, 1.0);
+
+	// ambientLight = ambientLightColourAndIntensity;
+
+	vec3 outgoingLight = (incommingLight + ambientLight) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular + envSample * fresnelSpecularEye;
+	if (v2f_viewSpacePosition[1] < -249) {
+		// materialDiffuse = vec3(0.3, 1.0, 0.0);
 		if (shadowVal() == 1) {
 			incommingLight = vec3(0,0,0);
 		} else {
@@ -195,7 +209,7 @@ void main()
 		// vec3 skyBox = texture(environmentCubeTexture, thingo).xyz;
 		vec3 thingy = texture(diffuse_texture, v2f_texCoord).xyz;
 		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * thingy;
-	} else if (v2f_viewSpacePosition[2] == -2000) {
+	} else if (v2f_viewSpacePosition[2] < -1999) {
 		vec3 thingy = texture(diffuse_texture, v2f_texCoord).xyz;
 		outgoingLight = (incommingLight + ambientLightColourAndIntensity) * thingy;
 	}

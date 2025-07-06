@@ -65,7 +65,7 @@ void main()
 	
 	vec3 materialDiffuse = texture(diffuse_texture, v2f_texCoord).xyz * material_diffuse_color;
 
-	if (v2f_viewSpacePosition[1] == -250) {
+	if (v2f_viewSpacePosition[1] < -249) {
 		materialDiffuse = vec3(0.3, 1.0, 0.0);
 	}
 

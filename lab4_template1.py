@@ -4,7 +4,7 @@ from OpenGL.GL import *
 import math
 import numpy as np
 import time
-import imgui
+#import imgui
 
 import magic
 # We import the 'lab_utils' module as 'lu' to save a bit of typing while still clearly marking where the code came from.
@@ -41,11 +41,18 @@ g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_currentFragmentShaderName = 'fragmentShader.glsl'
 #g_currentFragmentShaderName = 'fragmentShader1.glsl'
 #g_currentFragmentShaderName = 'fragmentShader2.glsl'
+g_startTime = 0
 g_level = 3
 
 shaders = ['fragmentShader1.glsl', 'fragmentShader2.glsl', 'fragmentShader.glsl']
 g_currentFragmentShaderName = shaders[g_level - 1]
 
+#g_sphere_centre = [round(np.random.random() * 400 - 200, 4), round(np.random.random() * 400 + 100, 4), round(np.random.random() * 400 - 200, 4)]
+#g_radius = round(np.random.random() * 50 + 25, 4)
+
+g_sphere_centre = [0.0, 250.0, 200.0]
+g_radius = 75.0
+#print(g_sphere_centre, g_radius)
 g_currentEnvMapName = "Daylight"
 
 g_environmentCubeMap = None
@@ -57,7 +64,8 @@ g_currentMaterial = 0
 my_counter = 0
 
 g_savedImageCounter = 0
-g_maxImages = 1
+g_maxImages = 50000
+g_maxImages = 0
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -126,6 +134,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_groundModel
     global g_wallModel
     global g_level
+    global g_startTime
 
     colour = np.array([1,1,0,1], np.float32)
 
@@ -134,7 +143,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     light_position = g_model.centre \
         + light_rotation * lu.vec3(0,0,g_lightDistance)'''
     
-    light_position = [0,2500,0]
+    light_position = [0,2000,0]
 
     """
         This configures the fixed-function transformation from 
@@ -236,7 +245,8 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     color_guy = [1.0, 0.3, 0.0]
 
     lu.set_uniform(g_shader, "material_diffuse_color", color_guy)
-    lu.set_uniform(g_shader, "material_specular_color", [0.1, 0.1, 0.1])
+    #lu.set_uniform(g_shader, "material_specular_color", [0.1, 0.03, 0.0])
+    lu.set_uniform(g_shader, "material_specular_color", [1.0, 0.3, 0.0])
     lu.set_uniform(g_shader, "material_emissive_color", [0.0, 0.0, 0.0])
 
     lu.set_uniform(g_shader, "material_alpha", 1.0)
@@ -259,7 +269,38 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
     '''sphere_centre = [0.0, 100.0, 200.0]
     radius = 75.0'''
-    sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_plane_source([0.0, -1.0, 0.0], sphere_centre, radius)
+
+    '''sphere_centre = [-50.0,250.0,200.0]
+    radius = 25.0
+
+    sphere_centre = [-65.0,250.0,0.0]
+    radius = 33.0
+
+    sphere_centre = [-80.0,250.0,-200.0]
+    radius = 40.0'''
+
+
+    sphere_centre = [-50.0,250.0,200.0]
+    radius = 40.0
+
+    '''sphere_centre = [-65.0,250.0,0.0]
+    radius = 50.0'''
+
+    
+    '''sphere_centre = [-80.0,250.0,-200.0]
+    radius = 60.0'''
+
+    sphere_centre = g_sphere_centre
+    radius = g_radius
+
+    if g_level == 2 or g_level == 3:
+        #sphere_centre = [50,250,(time.time() % 5) * 100 - 500]
+        #radius = 50
+        #sphere_centre = [0.0, 250.0, 0.0]
+        sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
+        #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
+    else:
+        sx, sz, small_length, large_length, sin_alpha, cos_alpha = mn.find_shadow_ellipse_plane_source([1.0, -1.0, 0.0], sphere_centre, radius)
     '''
     uniform float shadowCentreX
     uniform float shadowCentreZ
@@ -288,11 +329,21 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
 
     #lu.draw_sphere([0,0,0], 100.0, colour, view_to_clip, world_to_view)
     if g_savedImageCounter < g_maxImages:
-        file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
+        #file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
         file_name = "saved_screens/test_folder/my_test_file.dat"
-        #mn.save_screen(width, height, file_name, sphere_centre, radius)
+        file_name = "saved_screens/test_folder/far_shader_larger_1.dat"
+        file_name = "saved_screens/test_folder/test_test.dat"
+        #file_name = f"saved_screens/level_2_screens/screen_{g_savedImageCounter}.dat"
+        mn.save_screen(width, height, file_name, sphere_centre, radius)
+        if g_maxImages > 100 and g_savedImageCounter % (g_maxImages // 100) == 0:
+            percentdone = g_savedImageCounter / g_maxImages
+            if percentdone != 0 and percentdone != 1:
+                print(percentdone)
+                curtime = time.time() - g_startTime
+                esttimeleft = curtime / percentdone * (1 - percentdone)
+                print(f"taken {curtime}, estimated {esttimeleft} left")
         g_savedImageCounter += 1
-        #mn.load_and_display_screen(file_name)
+        mn.load_and_display_screen(file_name)
 
 def init_resources() -> None:
     """
@@ -302,6 +353,9 @@ def init_resources() -> None:
     global g_lightDistance
     global g_shader
     global g_environmentCubeMap
+    global g_startTime
+
+    g_startTime = time.time()
 
     g_environmentCubeMap = lu.load_cubemap(
         "data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)   
@@ -353,10 +407,10 @@ def build_shader(vertex_src: str, fragment_src: str) -> int:
         glUseProgram(0)
     return shader
 
-def itemListCombo(currentItem, items, name):
+'''def itemListCombo(currentItem, items, name):
     ind = items.index(currentItem)
     _,ind = imgui.combo(name, ind, items)
-    return items[ind]
+    return items[ind]'''
 
 def reLoad_shader():
     global g_vertexShaderSource
@@ -401,6 +455,11 @@ def load_model(modelName):
     "COSC3000 - Computer Graphics Lab 4, part 1", 
     960, 640, render_frame, init_resources, draw_ui, update)"""
 
+"""magic.run_program(
+    "COSC3000 - Major Project", 
+    256, 256, render_frame, init_resources, None, update)"""
+
+
 magic.run_program(
     "COSC3000 - Major Project", 
-    640, 640, render_frame, init_resources, None, update)
+    960, 960, render_frame, init_resources, None, update)

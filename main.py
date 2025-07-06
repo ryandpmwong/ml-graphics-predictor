@@ -19,90 +19,71 @@ import struct
 def find_shadow_ellipse_plane_source(light_direction, sphere_centre, sphere_radius):
     """
     Finds the shape of the shadow cast onto the plane y = 0
+
+    Assumes light_direction[1] < 0
     """
     d = np.array(light_direction)
     c = np.array(sphere_centre)
     dx, dy, dz = d
     cx, cy, cz = c
-    # c + ? d = 0
-    # cy + ? dy = 0
+    d_length = np.linalg.norm(d)
+
     beta = -cy/dy
-    sx = cx + beta * dx
-    sz = cz + beta * dz
+    ellipse_x = cx + beta * dx
+    ellipse_z = cz + beta * dz
 
+    minor_axis = sphere_radius
+    major_axis = sphere_radius * d_length / -dy
 
-    small_length = sphere_radius
-    large_length = sphere_radius * np.linalg.norm(d) / dy
-    # sphere centre is intersection where line c + lambda l
-
-
-    if dz == 0:
+    if dz == 0:  # alpha = 90 degrees
         sin_alpha = 1.0
         cos_alpha = 0.0
     else:
         alpha = np.arctan(dx/dz)
         sin_alpha = np.sin(alpha)
         cos_alpha = np.cos(alpha)
-    return (sx, sz, small_length, large_length, sin_alpha, cos_alpha)
+    
+    return (ellipse_x, ellipse_z, minor_axis, major_axis, sin_alpha, cos_alpha)
 
 
 def find_shadow_ellipse_point_source(light_pos, sphere_centre, sphere_radius):
+    """
+    Finds the shape of the shadow cast onto the plane y = 0
+
+    Assumes light_pos[1] > sphere_centre[1]
+    """
     l = np.array(light_pos)
     c = np.array(sphere_centre)
-    r = sphere_radius
-
     d = l - c
-
     lx, ly, lz = l
     dx, dy, dz = d
-    assert dy > 0
-
     d_length = np.linalg.norm(d)
+    
+    phi = np.arcsin(sphere_radius / dy)
+    semiminor_axis = ly * np.tan(phi)
 
-    # tan(d_pitch) = |dy| / |dx + dz|
-
-    # cos(d_pitch) = |dy| / |d|
     d_pitch = np.arccos(dy / d_length)
 
-    # sin(theta) = r / |d|
-    theta = np.arcsin(r / d_length)
+    if d_pitch == 0:  # light directly above sphere centre
+        semimajor_axis = semiminor_axis
+        ellipse_x = float(lx)
+        ellipse_z = float(lz)
+    else:
+        theta = np.arcsin(sphere_radius / d_length)
 
-    # max_pitch = d_pitch + theta
-    # min_pitch = d_pitch - theta
-    max_pitch = d_pitch + theta
-    min_pitch = d_pitch - theta
+        # max and min pitches of light rays tangent to sphere
+        max_pitch = d_pitch + theta
+        min_pitch = d_pitch - theta
 
-    # tan(max_pitch) = big_length / |ly|
-    # tan(min_pitch) = lil_length / |ly|
-    big_length = ly * np.tan(max_pitch)
-    lil_length = ly * np.tan(min_pitch)
+        large_length = ly * np.tan(max_pitch)
+        small_length = ly * np.tan(min_pitch)
+        semimajor_axis = (large_length - small_length) / 2
 
-    # large_length = big_length - lil_length
-    large_length = (big_length - lil_length) / 2
+        beta = (small_length + large_length) / (2 * np.sqrt(dx ** 2 + dz ** 2))
+        ellipse_x = lx - beta * dx
+        ellipse_z = lz - beta * dz
 
-    assert large_length > 0
-
-
-    # sin(phi) = r / |dy|
-    phi = np.arcsin(r / dy)
-    # tan(phi) = half_small_length / |ly|
-    # small_length = 2 * half_small_length
-    small_length = ly * np.tan(phi)
-    
-    assert small_length > 0
-
-
-    # line is l + lambda*d
-    # ly + lambda * dy = 0
-
-    # |(dx + dz)| * beta = (lil_length + big_length) / 2
-    beta = (lil_length + big_length) / (2 * np.sqrt(dx ** 2 + dz ** 2))
-
-    sx = lx - beta * dx
-    sz = lz - beta * dz
-
-    # now we need the angle
-    if dz == 0:
+    if dz == 0:  # alpha = 90 degrees
         sin_alpha = 1.0
         cos_alpha = 0.0
     else:
@@ -110,18 +91,15 @@ def find_shadow_ellipse_point_source(light_pos, sphere_centre, sphere_radius):
         sin_alpha = np.sin(alpha)
         cos_alpha = np.cos(alpha)
 
-    return (sx, sz, small_length, large_length, sin_alpha, cos_alpha)
+    return (ellipse_x, ellipse_z, semiminor_axis, semimajor_axis, sin_alpha, cos_alpha)
 
 def get_pixel_array(width, height):
     pixels = glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,None)
     screen = []
-    for i in range(height):
-        #this_row = []
-        for j in range(width):
-            r, g, b = pixels[3*(i*width + j)], pixels[3*(i*width + j) + 1], pixels[3*(i*width + j) + 2]
-            gray_scale = int(0.299*r + 0.587*g + 0.114*b)
-            screen.append(gray_scale)
-        #screen.append(this_row)
+    for i in range(width*height):
+        r, g, b = pixels[3*i : 3*i+3]
+        grey_scale = int(0.299*r + 0.587*g + 0.114*b)
+        screen.append(grey_scale)
     return screen
 
 def save_screen(width, height, filename, sphere_centre, sphere_radius):
@@ -155,11 +133,13 @@ def load_screen(filename):
     sphere_radius /= 10000
     return (width, height, x, y, z, sphere_radius, pixels)
 
-def display_screen(width, height, pixels):
-    new_pixels = np.array(pixels)
-    new_pixels = new_pixels.reshape((height, width))
-    new_pixels = np.flip(new_pixels, axis=0)
-    plt.imshow(new_pixels, cmap='gray')
+def display_screen(width, height, screen):
+    pixels = np.array(screen)
+    pixels = pixels.reshape((height, width))
+    pixels = np.flip(pixels, axis=0)
+    plt.imshow(pixels, cmap='gray', vmin=0, vmax=255)
+    plt.xticks([])  # Remove x-axis ticks
+    plt.yticks([])  # Remove y-axis ticks
     plt.show()
 
 def load_and_display_screen(filename):
@@ -184,3 +164,5 @@ def test():
     display_screen(width, height, pixels)'''
 
 #test()
+
+#load_and_display_screen("saved_screens/test_folder/example_3.dat")

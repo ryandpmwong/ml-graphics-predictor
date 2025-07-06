@@ -181,7 +181,7 @@ void main()
 	vec3 materialSpecular = texture(specular_texture, v2f_texCoord).xyz * material_specular_color;
 	vec3 fresnelSpecular = fresnelSchick(materialSpecular, max(0.0, dot(viewSpaceDirToLight, halfVector)));
 	vec3 outgoingLight = (incommingLight + ambientLightColourAndIntensity) * materialDiffuse + incommingLight * specularIntensity * fresnelSpecular;
-	if (v2f_viewSpacePosition[1] == -250) {
+	if (v2f_viewSpacePosition[1] < -249) {
 		materialDiffuse = vec3(0.3, 1.0, 0.0);
 		if (shadowVal() == 1) {
 			incommingLight = vec3(0,0,0);
