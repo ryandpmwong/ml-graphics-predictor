@@ -4,10 +4,8 @@ from OpenGL.GL import *
 import math
 import numpy as np
 import time
-#import imgui
 
 import magic as magic
-# We import the 'lab_utils' module as 'lu' to save a bit of typing while still clearly marking where the code came from.
 import lab_utils as lu
 from ObjModel import ObjModel
 import glob
@@ -15,8 +13,11 @@ import os
 
 import graphics_utils as gu
 #endregion
+
 #--- Globals ---#
 #region
+
+# light
 g_lightYaw = 25.0
 g_lightYawSpeed = 0.0#145.0
 g_lightPitch = -75.0
@@ -25,8 +26,7 @@ g_lightDistance = 250.0
 g_lightColourAndIntensity = lu.vec3(0.9, 0.9, 0.6)
 g_ambientLightColourAndIntensity = lu.vec3(0.5)
 
-#g_camera = lu.OrbitCamera([0,0,0], 10.0, -25.0, -35.0)
-#g_camera = lu.OrbitCamera([0,500,0], 1000.0, 0.0, 0.0)
+# camera
 g_zTranslation = 1000
 g_yTranslation = 250
 g_camera = lu.FreeCamera([0,g_yTranslation,g_zTranslation],180,0)
@@ -39,17 +39,20 @@ g_wallModel = None
 g_vertexShaderSource = ObjModel.defaultVertexShader
 g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_startTime = 0
+
+
 g_level = 3
 
 shaders = ['graphics/fragmentShader1.glsl', 'graphics/fragmentShader2.glsl', 'graphics/fragmentShader.glsl']
 g_currentFragmentShaderName = shaders[g_level - 1]
 
-#g_sphere_centre = [round(np.random.random() * 400 - 200, 4), round(np.random.random() * 400 + 100, 4), round(np.random.random() * 400 - 200, 4)]
-#g_radius = round(np.random.random() * 50 + 25, 4)
 
+# custom sphere parameters
+g_use_custom_sphere = False
 g_sphere_centre = [0.0, 250.0, 200.0]
 g_radius = 75.0
-#print(g_sphere_centre, g_radius)
+
+
 g_currentEnvMapName = "Daylight"
 
 g_environmentCubeMap = None
@@ -61,8 +64,8 @@ g_currentMaterial = 0
 my_counter = 0
 
 g_savedImageCounter = 0
-g_maxImages = 50000
-g_maxImages = 0
+#g_maxImages = 50000
+g_maxImages = 100
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -92,15 +95,6 @@ def update(dt: float, keys: dict[str, bool],
     global g_lightPitch
     global g_lightPitchSpeed
 
-    """g_lightYaw += g_lightYawSpeed * dt
-    g_lightPitch += g_lightPitchSpeed * dt
-
-    g_reloadTimeout -= dt
-    if g_reloadTimeout <= 0.0:
-        reLoad_shader()
-        g_reloadTimeout = 1.0"""
-
-    #g_camera.update(dt, keys, mouse_delta)
     g_camera.update(dt, keys, [0.0, 0.0])
 
 def setDefaultUniformBindings(shaderProgram):
@@ -134,11 +128,6 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     global g_startTime
 
     colour = np.array([1,1,0,1], np.float32)
-
-    '''light_rotation = lu.Mat3(lu.make_rotation_y(math.radians(g_lightYaw))) \
-        * lu.Mat3(lu.make_rotation_x(math.radians(g_lightPitch))) 
-    light_position = g_model.centre \
-        + light_rotation * lu.vec3(0,0,g_lightDistance)'''
     
     light_position = [0,2000,0]
 
@@ -223,31 +212,12 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
 
     glUseProgram(g_shader)
 
-    """material = {'color': {'diffuse': [0.5, 0.35, 0.06], 'ambient': [0.0, 0.0, 0.0], 'specular': [1.0, 0.71, 0.12], 'emissive': [0.0, 0.0, 0.0]},
-                'texture': {'diffuse': -1, 'opacity': -1, 'specular': -1, 'normal': -1},
-                'alpha': 1.0,
-                'specularExponent': time.time() % 60,
-                'offset': 0}
-    TU_Diffuse = 0
-    TU_Opacity = 1
-    TU_Specular = 2
-    TU_Normal = 3
-    defaultTextureOne = glGenTextures(1)
-    defaultNormalTexture = glGenTextures(1)
-    lu.bindTexture(TU_Diffuse, material["texture"]["diffuse"], defaultTextureOne);
-    lu.bindTexture(TU_Opacity, material["texture"]["opacity"], defaultTextureOne);
-    lu.bindTexture(TU_Specular, material["texture"]["specular"], defaultTextureOne);
-    lu.bindTexture(TU_Normal, material["texture"]["normal"], defaultNormalTexture);"""
-
     color_guy = [1.0, 0.3, 0.0]
 
     lu.set_uniform(g_shader, "material_diffuse_color", color_guy)
-    #lu.set_uniform(g_shader, "material_specular_color", [0.1, 0.03, 0.0])
     lu.set_uniform(g_shader, "material_specular_color", [1.0, 0.3, 0.0])
     lu.set_uniform(g_shader, "material_emissive_color", [0.0, 0.0, 0.0])
-
     lu.set_uniform(g_shader, "material_alpha", 1.0)
-    #lu.set_uniform(g_shader, "material_specular_exponent", 1.0)
     lu.set_uniform(g_shader, "material_specular_exponent", 55.0)
 
 
@@ -264,31 +234,10 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     #radius = 100
     #sx, sz, small_length, large_length, sin_alpha, cos_alpha = gu.find_shadow_ellipse_point_source(light_position, sphere_centre, radius)
     #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
-    '''sphere_centre = [0.0, 100.0, 200.0]
-    radius = 75.0'''
 
-    '''sphere_centre = [-50.0,250.0,200.0]
-    radius = 25.0
-
-    sphere_centre = [-65.0,250.0,0.0]
-    radius = 33.0
-
-    sphere_centre = [-80.0,250.0,-200.0]
-    radius = 40.0'''
-
-
-    sphere_centre = [-50.0,250.0,200.0]
-    radius = 40.0
-
-    '''sphere_centre = [-65.0,250.0,0.0]
-    radius = 50.0'''
-
-    
-    '''sphere_centre = [-80.0,250.0,-200.0]
-    radius = 60.0'''
-
-    sphere_centre = g_sphere_centre
-    radius = g_radius
+    if g_use_custom_sphere:
+        sphere_centre = g_sphere_centre
+        radius = g_radius
 
     if g_level == 2 or g_level == 3:
         #sphere_centre = [50,250,(time.time() % 5) * 100 - 500]
@@ -298,14 +247,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         #print(sx, sz, small_length, large_length, sin_alpha, cos_alpha, sphere_centre, radius)
     else:
         sx, sz, small_length, large_length, sin_alpha, cos_alpha = gu.find_shadow_ellipse_plane_source([1.0, -1.0, 0.0], sphere_centre, radius)
-    '''
-    uniform float shadowCentreX
-    uniform float shadowCentreZ
-    uniform float shadowLength
-    uniform float shadowWidth
-    uniform float shadowCosAlpha
-    uniform float shadowSinAlpha
-    '''
+    
     lu.set_uniform(g_shader, "shadowCentreX", sx)
     lu.set_uniform(g_shader, "shadowCentreZ", sz-g_zTranslation)
     lu.set_uniform(g_shader, "shadowLength", large_length)
@@ -331,7 +273,10 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         file_name = "saved_screens/test_folder/far_shader_larger_1.dat"
         file_name = "saved_screens/test_folder/test_test_test_test.dat"
         #file_name = f"saved_screens/level_2_screens/screen_{g_savedImageCounter}.dat"
+        file_name = f"saved_screens/test_dataset/screen_{g_savedImageCounter}.dat"
         gu.save_screen(width, height, file_name, sphere_centre, radius)
+
+        # print progress
         if g_maxImages > 100 and g_savedImageCounter % (g_maxImages // 100) == 0:
             percentdone = g_savedImageCounter / g_maxImages
             if percentdone != 0 and percentdone != 1:
@@ -339,8 +284,9 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
                 curtime = time.time() - g_startTime
                 esttimeleft = curtime / percentdone * (1 - percentdone)
                 print(f"taken {curtime}, estimated {esttimeleft} left")
+        
         g_savedImageCounter += 1
-        gu.load_and_display_screen(file_name)
+        #gu.load_and_display_screen(file_name)
 
 def init_resources() -> None:
     """
@@ -449,7 +395,10 @@ def load_model(modelName):
 # This does all the openGL setup and window creation needed
 # it hides a lot of things that we will want to get a handle on as time goes by.
 
-
-magic.run_program(
-    "ML Graphics Predictor", 
-    960, 960, render_frame, init_resources, None, update)
+def run(width, height):
+    magic.run_program(
+        "ML Graphics Predictor", 
+        width, height, render_frame, init_resources, None, update)
+    
+#run(960, 960)
+run(256, 256)

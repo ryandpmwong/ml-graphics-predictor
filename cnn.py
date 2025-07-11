@@ -29,17 +29,26 @@ import pandas as pd
 import numpy as np
 import graphics.graphics_utils as mn
 
+import matplotlib.pyplot as plt
+
 def make_dataset_annotations_file(dir, dest_path):
     df = pd.DataFrame(columns=["img_name","x","y","z","r"])
     df["img_name"] = os.listdir(dir)
     for idx, i in enumerate(os.listdir(dir)):
-        _, _, x, y, z, r, _  = mn.load_screen(i)
-        df["x"][idx] = x
+        _, _, x, y, z, r, _  = mn.load_screen(f"{dir}/{i}")
+        """df["x"][idx] = x
         df["y"][idx] = y
         df["z"][idx] = z
-        df["r"][idx] = r
+        df["r"][idx] = r"""
 
-    df.to_csv(dest_path, index = False, header=True)
+        df.loc[idx, "x"] = x
+        df.loc[idx, "y"] = y
+        df.loc[idx, "z"] = z
+        df.loc[idx, "r"] = r
+
+
+
+    df.to_csv(dest_path, index=False, header=True)
 
 
 class CustomImageDataset(Dataset):
@@ -55,7 +64,7 @@ class CustomImageDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
         #image = decode_image(img_path)
-        img_data =  mn.load_screen(img_path)
+        img_data = mn.load_screen(img_path)
         width, height = img_data[0], img_data[1]
         pixels = img_data[6]
         image = torch.from_numpy(np.array(pixels).reshape(width, height))
@@ -65,8 +74,54 @@ class CustomImageDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
+    
+    def get_all_labels(self, idx):
+        img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
+        _, _, x, y, z, r, _ = mn.load_screen(img_path)
+        return [x, y, z, r]
+    
+
+def show_my_tensor(img, label):
+    plt.figure()
+    plt.title(label)
+    plt.axis("off")
+    plt.imshow(img.squeeze(), cmap="gray")
+    plt.show()
 
 
+def test_it():
+    img_dir = "saved_screens/test_dataset"
+    an_file = "test_an_file"
+    transform = lambda img : torch.flip(img, [0])
+    make_dataset_annotations_file(img_dir, an_file)
+    cids = CustomImageDataset(an_file, img_dir, transform)
+
+    idx = 0
+    img, _ = cids[idx]
+    x, y, z, r = cids.get_all_labels(idx)
+    label = f"pos = ({round(x)}, {round(y)}, {round(z)}), rad = {round(r)}"
+    show_my_tensor(img, label)
+
+test_it()
+
+"""
+
+# start of MLP
+
+class MLP(nn.Module):
+  def __init__(self):
+      super(MLP, self).__init__()
+      self.model = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(28*28, 512),
+        nn.ReLU(),
+        nn.Linear(512, 10),
+        nn.Softmax(dim=1)
+    )
+
+  def forward(self, x):
+      x = self.model(x)
+      return x
 
 # Define transformations
 transform = transforms.Compose([
@@ -105,23 +160,6 @@ test_loader = DataLoader(mnist_test, batch_size=64)
       x = F.relu(self.fc1(x))
       x = F.softmax(self.fc2(x), dim=1)
       return x'''
-  
-
-
-class MLP(nn.Module):
-  def __init__(self):
-      super(MLP, self).__init__()
-      self.model = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(28*28, 512),
-        nn.ReLU(),
-        nn.Linear(512, 10),
-        nn.Softmax(dim=1)
-    )
-
-  def forward(self, x):
-      x = self.model(x)
-      return x
   
 # Instantiate MLP
 model = MLP().cuda() if torch.cuda.is_available() else MLP()
@@ -288,3 +326,6 @@ print("--------------")
 
 # Summarise the model
 summary(model, input_size=(1, 28, 28))
+
+
+"""
