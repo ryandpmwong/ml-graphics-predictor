@@ -65,7 +65,7 @@ my_counter = 0
 
 g_savedImageCounter = 0
 #g_maxImages = 50000
-g_maxImages = 100
+g_maxImages = 0
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -269,11 +269,9 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
     #lu.draw_sphere([0,0,0], 100.0, colour, view_to_clip, world_to_view)
     if g_savedImageCounter < g_maxImages:
         #file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
-        file_name = "saved_screens/test_folder/my_test_file.dat"
-        file_name = "saved_screens/test_folder/far_shader_larger_1.dat"
-        file_name = "saved_screens/test_folder/test_test_test_test.dat"
-        #file_name = f"saved_screens/level_2_screens/screen_{g_savedImageCounter}.dat"
-        file_name = f"saved_screens/test_dataset/screen_{g_savedImageCounter}.dat"
+        #file_name = f"saved_screens/test_dataset/screen_{g_savedImageCounter}.dat"
+        file_name = f"saved_screens/train_data/screen_{g_savedImageCounter}.dat"
+        file_name = f"saved_screens/test_data/screen_{g_savedImageCounter}.dat"
         gu.save_screen(width, height, file_name, sphere_centre, radius)
 
         # print progress
