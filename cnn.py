@@ -61,11 +61,12 @@ class CustomImageDataset(Dataset):
         width, height = img_data[0], img_data[1]
         pixels = img_data[6]
         image = torch.from_numpy(np.array(pixels).reshape(1, width, height))
-        label = self.img_labels.iloc[idx, 1]
+        label = self.img_labels.iloc[idx, 1].reshape(1)
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
+        #print("the shape of label is:", label.shape)
         return image, label
     
     def get_all_labels(self, idx):
@@ -104,15 +105,20 @@ def test_custom_dataset():
     label = f"pos = ({round(x)}, {round(y)}, {round(z)}), rad = {round(r)}"
     show_my_tensor(img, label)
 
+def new_test(dir):
+    img_dir = f"saved_screens/{dir}"
+    annotation_file_path = f"{dir}_annotations"
+    dataset = CustomImageDataset(annotation_file_path, img_dir, lambda img : torch.flip(img, [0]).to(torch.float), lambda lbl : torch.tensor(lbl).to(torch.float))
+    print(dataset[0])
 
 
 # Define CNN model
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 4, 5, 2)  # MNIST has 1 color (channel)
+        self.conv1 = nn.Conv2d(1, 4, 5, 2)
         self.pool = nn.MaxPool2d(kernel_size=3, stride=2) # 126 * 126
-        self.fc1 = nn.Linear(4 * 62 * 62, 256)  # Flatten after Conv2D
+        self.fc1 = nn.Linear(4 * 62 * 62, 256)
         self.fc2 = nn.Linear(256, 1)
 
     def forward(self, x):
@@ -146,7 +152,6 @@ def run_cnn():
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        correct = 0
         total = 0
 
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}"):
@@ -162,18 +167,14 @@ def run_cnn():
             optimizer.step()
 
             running_loss += loss.item()
-            _, predicted = outputs.max(1)
             total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
-
+        
         # Log loss and accuracy to TensorBoard
         writer.add_scalar('Loss/train', running_loss / len(train_loader), epoch)
-        writer.add_scalar('Accuracy/train', 100. * correct / total, epoch)
 
         # Validation loop
         model.eval()
         val_loss = 0.0
-        val_correct = 0
         val_total = 0
 
         with torch.no_grad():
@@ -186,15 +187,12 @@ def run_cnn():
                 outputs = model(inputs)
                 loss = loss_fn(outputs, labels)
                 val_loss += loss.item()
-                _, predicted = outputs.max(1)
                 val_total += labels.size(0)
-                val_correct += predicted.eq(labels).sum().item()
 
-        # Log validation loss and accuracy
+        # Log validation loss
         writer.add_scalar('Loss/val', val_loss / len(test_loader), epoch)
-        writer.add_scalar('Accuracy/val', 100. * val_correct / val_total, epoch)
 
-    # Don't forget to close the writer
+    # close the writer
     writer.close()
     print("--------------")
 
