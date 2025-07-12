@@ -83,13 +83,13 @@ def show_my_tensor(img, label):
     plt.show()
 
 
-def get_data_loader(dir, make_annotations_file=True):
+def get_data_loader(dir, make_annotations_file=True, batch_size=64):
     img_dir = f"saved_screens/{dir}"
     annotation_file_path = f"{dir}_annotations"
     if make_annotations_file:
         make_dataset_annotations_file(img_dir, annotation_file_path)
     dataset = CustomImageDataset(annotation_file_path, img_dir, lambda img : torch.flip(img, [0]).to(torch.float), lambda lbl : torch.tensor(lbl).to(torch.float))
-    return DataLoader(dataset, batch_size=64)
+    return DataLoader(dataset, batch_size=batch_size)
 
 
 def test_custom_dataset():
@@ -112,7 +112,8 @@ def new_test(dir):
     print(dataset[0])
 
 
-# Define CNN model
+'''
+old cnn
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -128,6 +129,33 @@ class CNN(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+'''
+
+
+# Define CNN model
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 4, 5, 4)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=2)
+        self.fc1 = nn.Linear(3844, 256)
+        self.fc2 = nn.Linear(256, 1)
+
+    def forward(self, x):
+        x = torch.relu(self.conv1(x))
+        x = self.pool(x)
+        x = torch.flatten(x, 1)
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+def test_example(model, test_data_dir):
+    test_dataloader = get_data_loader(test_data_dir, make_annotations_file=True, batch_size=1)
+    img, lbl = next(iter(test_dataloader))
+    output = model(img)
+    print(f"Predicted value: {output}")
+    print(f"True value: {lbl}")
+    print(f"(error = {output - lbl})")
 
 
 
@@ -154,6 +182,8 @@ def run_cnn():
         running_loss = 0.0
         total = 0
 
+        all_my_running_losses = []
+
         for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}"):
             # When cuda is available
             if torch.cuda.is_available():
@@ -168,6 +198,11 @@ def run_cnn():
 
             running_loss += loss.item()
             total += labels.size(0)
+
+            all_my_running_losses.append(running_loss)
+
+        print(all_my_running_losses[-1])
+        print(running_loss / len(train_loader))
         
         # Log loss and accuracy to TensorBoard
         writer.add_scalar('Loss/train', running_loss / len(train_loader), epoch)
@@ -198,6 +233,9 @@ def run_cnn():
 
     # Summarise the model
     summary(model, input_size=(1, 256, 256))
+
+
+    #test_example(model, "temp_test_folder")
 
 run_cnn()
 
