@@ -41,7 +41,7 @@ g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_startTime = 0
 
 
-g_level = 3
+g_level = 1
 
 shaders = ['graphics/fragmentShader1.glsl', 'graphics/fragmentShader2.glsl', 'graphics/fragmentShader.glsl']
 g_currentFragmentShaderName = shaders[g_level - 1]
@@ -63,9 +63,11 @@ g_currentMaterial = 0
 
 my_counter = 0
 
+DATA_PATH = "./"
+
+g_savedImageDir = f"{DATA_PATH}/test_data_1"
 g_savedImageCounter = 0
-#g_maxImages = 50000
-g_maxImages = 0
+g_maxImages = 2000
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -271,7 +273,7 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         #file_name = f"saved_screens/new_test_folder/test_file_{g_savedImageCounter}.dat"
         #file_name = f"saved_screens/test_dataset/screen_{g_savedImageCounter}.dat"
         file_name = f"saved_screens/train_data/screen_{g_savedImageCounter}.dat"
-        file_name = f"saved_screens/test_data/screen_{g_savedImageCounter}.dat"
+        file_name = f"{g_savedImageDir}/screen_{g_savedImageCounter}.dat"
         gu.save_screen(width, height, file_name, sphere_centre, radius)
 
         # print progress
@@ -285,6 +287,9 @@ def render_frame(x_offset: int, width: int, height: int) -> None:
         
         g_savedImageCounter += 1
         #gu.load_and_display_screen(file_name)
+
+        if g_savedImageCounter == g_maxImages:
+            print(f"{g_maxImages} images successfully saved.")
 
 def init_resources() -> None:
     """
