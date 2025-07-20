@@ -822,7 +822,7 @@ def init_glfw_and_resources(
     if init_resources:
         init_resources()
 
-    g_coordinateSystemModel = ObjModel("data/coordinate_system.obj");
+    g_coordinateSystemModel = ObjModel("graphics_data/coordinate_system.obj");
 
     return window,impl
 

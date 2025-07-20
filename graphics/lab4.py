@@ -41,7 +41,7 @@ g_fragmentShaderSource = ObjModel.defaultFragmentShader
 g_startTime = 0
 
 
-g_level = 1
+g_level = 3
 
 shaders = ['graphics/fragmentShader1.glsl', 'graphics/fragmentShader2.glsl', 'graphics/fragmentShader.glsl']
 g_currentFragmentShaderName = shaders[g_level - 1]
@@ -63,11 +63,11 @@ g_currentMaterial = 0
 
 my_counter = 0
 
-DATA_PATH = "./"
+DATA_PATH = "./cnn_data"
 
 g_savedImageDir = f"{DATA_PATH}/test_data_1"
 g_savedImageCounter = 0
-g_maxImages = 2000
+g_maxImages = 0
 
 """
     Set the texture unit to use for the cube map to the next 
@@ -304,7 +304,7 @@ def init_resources() -> None:
     g_startTime = time.time()
 
     g_environmentCubeMap = lu.load_cubemap(
-        "data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)   
+        "graphics_data/cube_maps/" + g_currentEnvMapName + "/%s.bmp", True)   
     load_model(g_currentModelName)
 
     glEnable(GL_DEPTH_TEST)
@@ -386,10 +386,10 @@ def load_model(modelName):
     global g_lightDistance
     global g_groundModel
     global g_wallModel
-    g_model = ObjModel("data/" + modelName)
+    g_model = ObjModel("graphics_data/" + modelName)
     #g_model = ObjModel("data/house.obj");
-    g_groundModel = ObjModel("data/ground.obj")
-    g_wallModel = ObjModel("data/wall.obj")
+    g_groundModel = ObjModel("graphics_data/ground.obj")
+    g_wallModel = ObjModel("graphics_data/wall.obj")
 
     #g_camera.target = g_model.centre
     #g_camera.distance = lu.length(g_model.centre - g_model.aabbMin) * 3.1

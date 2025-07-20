@@ -3,8 +3,8 @@ import torch.nn as nn   # Building blocks for neural networks
 import torch.nn.functional as F # Various functions for building neural networks
 import torch.optim as optim  # Optimiser for neural networks
 from torchsummary import summary  # Summarise PyTorch model
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split, Dataset
+from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter # Tensorboard in PyTorch
 import datetime
 
@@ -19,7 +19,7 @@ import graphics.graphics_utils as mn
 
 import matplotlib.pyplot as plt
 
-DATA_PATH = "./"
+DATA_PATH = "./cnn_data"
 
 def make_dataset_annotations_file(dir, dest_path):
     df = pd.DataFrame(columns=["img_name","x","y","z","r"])
@@ -50,18 +50,12 @@ class CustomImageDataset(Dataset):
         width, height = img_data[0], img_data[1]
         pixels = img_data[6]
         image = torch.from_numpy(np.flip(np.array(pixels).reshape(1, width, height), 1).copy())
-        #label = self.img_labels.iloc[idx, 1].reshape(1)
         label = self.img_labels.iloc[idx, 1:5]
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
-    
-    def get_all_labels(self, idx):
-        img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        _, _, x, y, z, r, _ = mn.load_screen(img_path)
-        return [x, y, z, r]
     
 def get_mean_and_std(data_loader):
     total_mean = 0
@@ -79,11 +73,13 @@ def get_mean_and_std(data_loader):
     return (mean, std)
 
 def show_my_tensor(img, title):
+    invTrans = transforms.Compose([transforms.Normalize((0.0,), (1/39.3379,)),
+                                   transforms.Normalize((-197.6725), (1.0,))])
+    img = invTrans(img)
     plt.figure()
     plt.title(title)
     plt.axis("off")
-    plt.imshow(img.squeeze(), cmap="gray")
-    plt.show()
+    plt.imshow(img.squeeze(), cmap="gray", vmin=0, vmax=255)
 
 def scale_labels(label):
     """
@@ -96,80 +92,39 @@ def scale_labels(label):
     scaled_r = (r - 50.0) / 50.0
     return torch.tensor([scaled_x, scaled_y, scaled_z, scaled_r]).to(torch.float)
 
+def inv_scale_labels(label):
+    """
+    Converts values back to their original units
+    """
+    scaled_x, scaled_y, scaled_z, scaled_r = label
+    x = scaled_x * 400.0
+    y = scaled_y * 400.0 + 300.0
+    z = scaled_z * 400.0
+    r = scaled_r * 50.0 + 50.0
+    return [x, y, z, r]
+
 
 def get_data_loader(img_dir, batch_size=64):
     annotations_file_path = f"{img_dir}_annotations"
     if not os.path.exists(annotations_file_path):
         make_dataset_annotations_file(img_dir, annotations_file_path)
-    #transform = lambda img : transforms.Normalize((0.5,), (0.5,)).forward(torch.flip(img, [0]).to(torch.float))
-    #transform = transforms.Normalize((197.6725,), (39.3379,))
-    #transform = lambda img : transforms.Normalize((197.6725,), (39.3379,)).forward(img.to(torch.float))
     transform = lambda img : nn.AvgPool2d(kernel_size=4, stride=4)(transforms.Normalize((197.6725,), (39.3379,))(img.to(torch.float)))
-    #transform = lambda img : transforms.Normalize((197.6725,), (256.0,)).forward(img.to(torch.float))
-    #transform = lambda img : img.to(torch.float)
-    target_transform = lambda lbl : torch.tensor(lbl).to(torch.float) / 400.0
-    #target_transform = lambda lbl : (torch.tensor(lbl).to(torch.float) - 300.0) / 400.0
-    target_transform = lambda lbl : (torch.tensor(lbl).to(torch.float) - 50.0) / 50.0
     target_transform = scale_labels
     dataset = CustomImageDataset(annotations_file_path, img_dir, transform, target_transform)
     return DataLoader(dataset, batch_size=batch_size)
 
 
 
-
-"""def test_custom_dataset():
-    img_dir = f"{DATA_PATH}/test_dataset"
-    annotations_file = "test_an_file"
-    transform = lambda img : torch.flip(img, [0])
-    make_dataset_annotations_file(img_dir, annotations_file)
-    cids = CustomImageDataset(annotations_file, img_dir, transform)
-
-    idx = 0
-    img, _ = cids[idx]
-    x, y, z, r = cids.get_all_labels(idx)
-    label = f"pos = ({round(x)}, {round(y)}, {round(z)}), rad = {round(r)}"
-    show_my_tensor(img, label)
-
-def new_test(dir):
-    img_dir = f"saved_screens/{dir}"
-    annotation_file_path = f"{dir}_annotations"
-    dataset = CustomImageDataset(annotation_file_path, img_dir, lambda img : torch.flip(img, [0]).to(torch.float), lambda lbl : torch.tensor(lbl).to(torch.float))
-    print(dataset[0])"""
-
-
-'''
-old cnn
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 4, 5, 2)
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=2) # 126 * 126
-        self.fc1 = nn.Linear(4 * 62 * 62, 256)
-        self.fc2 = nn.Linear(256, 1)
-
-    def forward(self, x):
-        x = torch.relu(self.conv1(x))
-        x = self.pool(x)
-        x = torch.flatten(x, 1)
-        x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-'''
-
-
 # Define CNN model
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        #self.avgpool = nn.AvgPool2d(kernel_size=4, stride=4)
         self.conv1 = nn.Conv2d(1, 8, kernel_size=3, stride=2)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2)
         self.fc1 = nn.Linear(1800, 128)
-        #self.fc2 = nn.Linear(128, 1)
         self.fc2 = nn.Linear(128, 4)
 
     def forward(self, x):
-        #x = self.avgpool(x)
         x = torch.relu(self.conv1(x))
         x = self.maxpool(x)
         x = torch.flatten(x, 1)
@@ -177,25 +132,22 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-def test_example(model, test_data_dir):
-    test_dataloader = get_data_loader(test_data_dir, batch_size=1)
-    img, lbl = next(iter(test_dataloader))
-    output = model(img)
-    print(f"Predicted value: {output}")
-    print(f"True value: {lbl}")
-    print(f"(error = {output - lbl})")
 
 def show_prediction(model, img, lbls):
-    pred_lbls = list(map(lambda x: round(float(x), 4), model(img)[0]))
-    true_lbls = list(map(lambda x: round(float(x), 4), lbls[0]))
+    pred_lbls = inv_scale_labels(model(img)[0])
+    true_lbls = inv_scale_labels(lbls[0])
+
+    pred_lbls = list(map(lambda x: round(float(x), 4), pred_lbls))
+    true_lbls = list(map(lambda x: round(float(x), 4), true_lbls))
+
     title = f"True: {true_lbls}\nPredicted: {pred_lbls}"
     show_my_tensor(img, title)
 
 
 
-def run_cnn(num_epochs=5, save_to=""):
-    train_loader = get_data_loader(f"{DATA_PATH}/train_data")
-    test_loader = get_data_loader(f"{DATA_PATH}/test_data")
+def run_cnn(train_dir, test_dir, save_to="", num_epochs=5):
+    train_loader = get_data_loader(train_dir)
+    test_loader = get_data_loader(test_dir)
 
     # Set up TensorBoard writer
     log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/CNN"
@@ -206,7 +158,6 @@ def run_cnn(num_epochs=5, save_to=""):
 
     # Define optimizer and loss function
     optimizer = optim.SGD(model.parameters(), lr=0.02)
-    #loss_fn = nn.MSELoss(reduction='none')
     loss_fn = nn.MSELoss()
 
     # Training loop
@@ -226,8 +177,6 @@ def run_cnn(num_epochs=5, save_to=""):
             optimizer.zero_grad()
             outputs = model(inputs)
 
-            #print(outputs.shape, labels.shape)
-            #print(type(outputs), type(labels))
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -237,10 +186,6 @@ def run_cnn(num_epochs=5, save_to=""):
             running_loss += loss.item()
             all_my_running_losses.append(running_loss)
 
-        #print(all_my_running_losses)
-        #print("Total loss:", running_loss)
-
-        #print(running_loss / len(train_loader))
         
         # Log loss and accuracy to TensorBoard
         writer.add_scalar('Loss/train', running_loss / len(train_loader), epoch)
@@ -270,30 +215,35 @@ def run_cnn(num_epochs=5, save_to=""):
     print("--------------")
 
     if save_to:
+        # save model parameters
         torch.save(model.state_dict(), save_to)
 
     # Summarise the model
     summary(model, input_size=(1, 64, 64))
 
 
-
-def test_test():
-    test_loader = get_data_loader(f"{DATA_PATH}/test_data")
-    img, lbl = next(iter(test_loader))
-    show_my_tensor(img[0], lbl[0])
-
-
 def load_cnn(file_path):
+    # load model parameters from given file
     model = CNN().cuda() if torch.cuda.is_available() else CNN()
     model.load_state_dict(torch.load(file_path))
     return model
 
 
-def main():
-    model = load_cnn(f"{DATA_PATH}/saved_models/test_shader_3")
-    loader = get_data_loader(f"{DATA_PATH}/example_data_3", batch_size=1)
-    img, lbls = next(iter(loader))
-    show_prediction(model, img, lbls)
+def test_examples(model_file: str, img_dir: str):
+    """
+    Show the predictions for each image in img_dir
+    """
+    model = load_cnn(model_file)
+    loader = get_data_loader(img_dir, batch_size=1)
+    for img, lbls in loader:
+        show_prediction(model, img, lbls)
+    plt.show()
 
-#main()
-#run_cnn(num_epochs=50, save_to=f"{DATA_PATH}/saved_models/test_shader_3")
+test_examples(f"{DATA_PATH}/saved_models/shader_3_predictor", f"{DATA_PATH}/example_data_3")
+
+"""
+run_cnn(f"{DATA_PATH}/train_data_1",
+        f"{DATA_PATH}/test_data_1",
+        save_to=f"{DATA_PATH}/saved_models/test_shader_1",
+        num_epochs=50)
+"""
